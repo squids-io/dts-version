@@ -1,0 +1,69 @@
+apiVersion: v1
+entries:
+  dts-api-server:
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2023-09-23T07:57:44.223171926Z"
+    description: A Helm chart for Kubernetes
+    digest: a0f1548950fe67ef62457cbaf48d69334ec0820b6472df28a1140581df7d27e0
+    name: dts-api-server
+    type: application
+    urls:
+    - https://squids-io.github.io/dts-version/dts-api-server-0.1.0.tgz
+    version: 0.1.0
+  dts-ui:
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2023-09-23T07:57:44.223507927Z"
+    description: A Helm chart for Kubernetes
+    digest: e4207a53ad7513ded4d75017c370bc3edb8482569d8ea703e9fdc40943f8918e
+    name: dts-ui
+    type: application
+    urls:
+    - https://squids-io.github.io/dts-version/dts-ui-0.1.0.tgz
+    version: 0.1.0
+  elasticsearch:
+  - apiVersion: v2
+    appVersion: 6.8.7
+    created: "2023-09-23T07:57:44.224118029Z"
+    description: A Helm chart for Kubernetes
+    digest: 37cf8ce4393cf587927ddc6d050ecdfd7350c5ed0c15aeb0e0acdf642b538dd6
+    name: elasticsearch
+    type: application
+    urls:
+    - https://squids-io.github.io/dts-version/elasticsearch-6.8.7.tgz
+    version: 6.8.7
+  fluentbit:
+  - apiVersion: v2
+    appVersion: 1.4.5
+    created: "2023-09-23T07:57:44.224662731Z"
+    description: A Helm chart for Kubernetes
+    digest: e763c9be472b474ce73298edba7311b6bca30845e8dbd91fef7f6555e72d08da
+    name: fluentbit
+    type: application
+    urls:
+    - https://squids-io.github.io/dts-version/fluentbit-0.1.0.tgz
+    version: 0.1.0
+  grafana:
+  - apiVersion: v2
+    appVersion: 8.1.3
+    created: "2023-09-23T07:57:44.225446634Z"
+    description: grafana chart
+    digest: cced23a745c6aa6564e443c7f261b401a71685ea05b612908915b501812bb605
+    name: grafana
+    type: application
+    urls:
+    - https://squids-io.github.io/dts-version/grafana-8.1.3.tgz
+    version: 8.1.3
+  monitor:
+  - apiVersion: v2
+    appVersion: 1.1.0
+    created: "2023-09-23T07:57:44.226310036Z"
+    description: A Helm chart for Kubernetes
+    digest: 32df9e192eb357c2ce651f3cd94cbd61638be69a036156331bc97bbfc35b3c69
+    name: monitor
+    type: application
+    urls:
+    - https://squids-io.github.io/dts-version/monitor-0.1.0.tgz
+    version: 0.1.0
+generated: "2023-09-23T07:57:44.220960219Z"
