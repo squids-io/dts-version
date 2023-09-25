@@ -3,9 +3,9 @@ entries:
   dts-api-server:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2023-09-25T06:44:51.727231695Z"
+    created: "2023-09-25T07:17:33.858110832Z"
     description: A Helm chart for Kubernetes
-    digest: 2eb3c7802c939190fe032f6fffa4a4d2aadcb80b7445129746ca4bee7dba56b1
+    digest: ea6aa2abd13015235a58238df5f4a9a8d0563cdbd4ce03832d6fba8de2c6473c
     name: dts-api-server
     type: application
     urls:
@@ -14,9 +14,9 @@ entries:
   dts-ui:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2023-09-25T06:44:51.727513295Z"
+    created: "2023-09-25T07:17:33.858406661Z"
     description: A Helm chart for Kubernetes
-    digest: 6293660be2bb9a2c4bee85fc2d0716489c9453edbe6734bba3ea3a16201aa6dd
+    digest: 9d55b1251d1c76e4dc78c698c8ecd853630e38520eea847770a566bbe473f824
     name: dts-ui
     type: application
     urls:
@@ -25,9 +25,9 @@ entries:
   elasticsearch:
   - apiVersion: v2
     appVersion: 6.8.7
-    created: "2023-09-25T06:44:51.728021794Z"
+    created: "2023-09-25T07:17:33.858952015Z"
     description: A Helm chart for Kubernetes
-    digest: 26b8e33a8bebb3a40cfbf94abde684df6a39f7fd95c640bd1c4e8c2522d82773
+    digest: 62c24462dc71528397c083d373cadd99274bd5c6eb5170dfd26c90d11ce6c0a4
     name: elasticsearch
     type: application
     urls:
@@ -36,9 +36,9 @@ entries:
   fluentbit:
   - apiVersion: v2
     appVersion: 1.4.5
-    created: "2023-09-25T06:44:51.728555394Z"
+    created: "2023-09-25T07:17:33.859521872Z"
     description: A Helm chart for Kubernetes
-    digest: 0629573d396276644c07dfb303b80225e1fd12af6a8c40c61e6230228be2c9ce
+    digest: 684b3d30c6155ad758be8f614f25c6477fd8ed96dcadc4393d76d2bda3ea77f0
     name: fluentbit
     type: application
     urls:
@@ -47,9 +47,9 @@ entries:
   grafana:
   - apiVersion: v2
     appVersion: 8.1.3
-    created: "2023-09-25T06:44:51.729175093Z"
+    created: "2023-09-25T07:17:33.860176537Z"
     description: grafana chart
-    digest: b570bc296134f599456acd89ee5ec06d68fee0e76189dceddeff75ccf56d3dfb
+    digest: 0c27843d350799b43b95c471c0de3c9cdc0d9cc14f23df3a9ff3ba6f95074ab4
     name: grafana
     type: application
     urls:
@@ -58,12 +58,12 @@ entries:
   monitor:
   - apiVersion: v2
     appVersion: 1.1.0
-    created: "2023-09-25T06:44:51.730035492Z"
+    created: "2023-09-25T07:17:33.861915609Z"
     description: A Helm chart for Kubernetes
-    digest: bc6031b567b1aacde504b8c320aa92072babf3ad232b99631735e818c4a81ac4
+    digest: cc4e340c5c6d4dbfa759cdf43a4b0cb7d694999d343736554256e3eae05b046d
     name: monitor
     type: application
     urls:
     - https://squids-io.github.io/dts-version/monitor-0.1.0.tgz
     version: 0.1.0
-generated: "2023-09-25T06:44:51.726638996Z"
+generated: "2023-09-25T07:17:33.85748517Z"
