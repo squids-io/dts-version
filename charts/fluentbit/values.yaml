@@ -1,0 +1,37 @@
+fullnameOverride: ""
+global:
+  registry: k8smaster.qfusion.irds
+  repository: irds
+  dataDir: /opt/dts
+  criType: docker
+image:
+  pullPolicy: Always
+  name: fluent-bit
+  tag: 2.0.9
+nameOverride: ""
+#resources:
+#  requests:
+#    cpu: "0.1"
+#    memory: 10Mi
+
+database:
+  nodeSelector: {}
+
+k8s:
+  nodeSelector: {}
+
+filesystemLimitSize: 10G
+
+affinity: {}
+tolerations:
+- effect: NoSchedule
+  key: qfusion/master
+  operator: Exists
+- effect: NoSchedule
+  key: node-role.kubernetes.io/master
+  operator: Exists
+affinty: {}
+esHost: elasticsearch-logging.dts.svc.cluster.local
+esPort: 9200
+kubeletPodsDir: /var/lib/kubelet/pods
+containerDir: /var/lib/docker/containers

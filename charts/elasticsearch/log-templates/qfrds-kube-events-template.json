@@ -1,0 +1,17 @@
+{
+  "mappings": {
+    "_doc": {
+      "properties": {
+        "message": {
+          "type": "text",
+          "norms": false,
+          "index": true
+        }
+      }
+    }
+  },
+  "index_patterns": [
+    "kube-events*"
+  ],
+  "order": 1
+}

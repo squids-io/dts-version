@@ -1,0 +1,227 @@
+---
+# Source: dts-ui/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-nginx-conf
+  namespace: dts
+data:
+  nginx.conf: |
+
+    #user nobody;
+    worker_processes 1;
+    # worker_processes  auto;
+
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        include mime.types;
+        default_type application/octet-stream;
+        underscores_in_headers on;
+
+        sendfile on;
+        #tcp_nopush on;
+
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        keepalive_timeout 70;
+
+        # ...... 413 ......
+        client_max_body_size 20m;
+        client_body_buffer_size 20m;
+
+        # ............... http ...........................
+        # ...... Upgrade ............... close........................ nginx ..................... Connection ...... ''
+        map $http_upgrade $connection_upgrade {
+            default upgrade;
+            '' close;
+        }
+
+        server {
+            listen 80;
+            # server_name localhost;
+
+            add_header 'Access-Control-Allow-Origin' "$http_origin";
+            add_header 'Access-Control-Allow-Credentials' "true";
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE' always;
+            add_header 'Access-Control-Allow-Headers' 'project-uid, x-project-id, x-tenant-id, x-real-ip, x-forwarded-ip, accept, content-type, host';
+
+            if ($request_method !~ ^(GET|POST|PUT|DELETE)$) {
+                return 405;
+            }
+
+            # if ($request_method = 'OPTIONS') {
+            #     add_header 'Access-Control-Allow-Origin' '*';
+            #     add_header 'Access-Control-Allow-Credentials' 'true';
+            #     add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+            #     add_header 'Access-Control-Allow-Headers' 'traceId,channel,callerId,version,type';
+            #     add_header 'Access-Control-Max-Age' 1728000;
+            #     add_header 'Content-Type' 'text/plain charset=UTF-8';
+            #     add_header 'Content-Length' 0;
+            #     return 204;
+            # }
+
+
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+                try_files $uri /index.html;
+
+                if ($request_filename ~* .*\.(?:htm|html|json|md)$) {
+                    add_header Cache-Control "private, no-store, no-cache, must-revalidate, proxy-revalidate";
+                }
+            }
+
+            location /dts/ {
+                alias /usr/share/nginx/html/;
+                index index.html;
+                try_files $uri /index.html;
+
+                if ($request_filename ~* .*\.(?:htm|html|json|md)$) {
+                    add_header Cache-Control "private, no-store, no-cache, must-revalidate, proxy-revalidate";
+                }
+            }
+
+            location ~* ^/dts/grafana/ {
+              root /client_files;
+              proxy_pass http://grafana.dts:3000;
+              proxy_set_header Authorization "";
+              proxy_set_header Host $http_host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection $connection_upgrade;
+              proxy_http_version 1.1;
+              proxy_connect_timeout 36000;
+              proxy_read_timeout 36000;
+              proxy_send_timeout 36000;
+              send_timeout 36000;
+            }
+
+            location ~* ^/api/motion/v2/client_files {
+                root /client_files;
+                proxy_pass http://dts-api-server.dts:3000;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_http_version 1.1;
+                proxy_connect_timeout 36000;
+                proxy_read_timeout 36000;
+                proxy_send_timeout 36000;
+                send_timeout 36000;
+            }
+
+            location ~* ^/api/motion/v2/template_file {
+                root /template_files;
+                proxy_pass http://dts-api-server.dts:3000;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_http_version 1.1;
+                proxy_connect_timeout 36000;
+                proxy_read_timeout 36000;
+                proxy_send_timeout 36000;
+                send_timeout 36000;
+            }
+
+
+            location ~* ^/api/motion {
+                # rewrite ^/api/v1/(.*)$ /v1/$1 break;
+                proxy_pass http://dts-api-server.dts:3000;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_http_version 1.1;
+                proxy_connect_timeout 36000;
+                proxy_read_timeout 36000;
+                proxy_send_timeout 36000;
+                send_timeout 36000;
+            }
+
+            error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+                root html;
+            }
+        }
+    }
+---
+# Source: dts-ui/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dts-ui
+  namespace: dts
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: dts-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30001
+---
+# Source: dts-ui/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dts-ui
+  namespace: dts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dts-ui
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dts-ui
+        qfusion/useIstio: "true"
+    spec:
+      affinity: 
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - dts-ui
+            topologyKey: kubernetes.io/hostname
+      
+      containers:
+        - name: ui
+          image: k8smaster.qfusion.irds/irds/dbmotion-ui:hcs-dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+            - name: web-nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai
+            type: ""
+        - name: web-nginx-conf
+          configMap:
+            name: web-nginx-conf

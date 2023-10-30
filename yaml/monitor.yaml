@@ -1,0 +1,325 @@
+---
+# Source: monitor/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+---
+# Source: monitor/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-dts
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+# Source: monitor/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-dts
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-dts
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: dts
+---
+# Source: monitor/templates/service.yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus-headless
+  namespace: dts
+  labels:
+    app.kubernetes.io/name: monitor
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: monitor
+  ports:
+    - name: web
+      protocol: TCP
+      port: 9090
+      targetPort: web
+    - name: grpc
+      port: 10901
+      targetPort: grpc
+---
+# Source: monitor/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    name: prometheus
+    kubernetes.io/cluster-service: 'true'
+spec:
+  ports:
+    - name: prometheus
+      nodePort: 32005
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  type: NodePort
+---
+# Source: monitor/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenix
+  labels:
+    name: phoenix
+    kubernetes.io/cluster-service: 'true'
+spec:
+  ports:
+    - name: phoenix
+      nodePort: 32003
+      port: 9091
+      protocol: TCP
+      targetPort: 9091
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  type: NodePort
+---
+# Source: monitor/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: alertmanager
+    kubernetes.io/cluster-service: 'true'
+  name: alertmanager
+spec:
+  ports:
+    - name: alertmanager
+      nodePort: 32006
+      port: 9093
+      protocol: TCP
+      targetPort: 9093
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  type: NodePort
+---
+# Source: monitor/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: monitor
+  namespace: dts
+  labels:
+    app.kubernetes.io/name: monitor
+spec:
+  serviceName: prometheus-headless
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: monitor
+  template:
+    metadata:
+      name: monitor
+      labels:
+        app.kubernetes.io/name: monitor
+        qfusion/useIstio: "true"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: dts-monitor-conf
+          image: k8smaster.qfusion.irds/irds/dbmotion-monitor-conf:latest
+          command:
+            - sh
+            - -c
+            - cp -r /phoenix-conf/* /phoenix && cp -r /monitor-conf/* /monitor && cp -r /alert-tmpl/* /alert
+          volumeMounts:
+            - name: phoenix-conf
+              mountPath: /phoenix
+            - name: monitor-conf
+              mountPath: /monitor
+            - name: tmpl-volume
+              mountPath: /alert
+      containers:
+        - name: phoenix
+          image: k8smaster.qfusion.irds/irds/phoenix:v1.4.1-dbmotion
+          imagePullPolicy: Always
+          args:
+            - "--database-address=qfusion-cmdb0.qfusion"
+            - "--database-port=3306"
+            - "--database-username=root"
+            - "--database-password=letsg0"
+            - "--database-database=dts_phoenix"
+            - "--data-dir=/etc/phoenix/monitor"
+            - "--rule-config=/rules.yml"
+            - "--prom-url=http://prometheus:9090"
+            - "--alert-url=http://alertmanager:9093"
+            - "--tmpl-dir=/etc/alert/tmpl"
+            - "--alerting-target-type-file-path=/etc/phoenix/conf/target_type.yml"
+            - "--alerting-type-file-path=/etc/phoenix/conf/alerting_type.yml"
+            - "--alerting-model-file-paths=/etc/phoenix/conf/dbmotion_model.yml"
+            - "--default-templates-file-path=/etc/phoenix/conf/templates.yml"
+            - "--notify-base-url=http://phoenix:9091"
+            - "--http-receivers-discovery-endpoint=http://webserver-cluster.qfusion/api/v1/phoenix/alerting_receivers"
+            - "--http-targets-discovery-endpoints=http://dts-api-server.qfusion:3000/api/motion/v2/alert/phoenix/targets"
+            - "--alert-hook=http://dts-api-server.qfusion:3000/api/motion/v2/alert/notice"
+            - "--http-discovery-interval=60"
+            - "--enable-multi-tenant=false"
+            - "--tailor-port=15100"
+          ports:
+            - containerPort: 9091
+              protocol: TCP
+              name: phoenix
+          volumeMounts:
+            - name: phoenix-conf
+              mountPath: /etc/phoenix/conf
+            - name: tmpl-volume
+              mountPath: /etc/alert/tmpl
+            - name: monitor-conf
+              mountPath: /etc/phoenix/monitor
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+        - name: prometheus
+          image: k8smaster.qfusion.irds/irds/prometheus:v2.43.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --web.enable-lifecycle
+            - --storage.tsdb.retention=180d
+            - --storage.tsdb.path=/prometheus/data
+            - --storage.tsdb.retention.time=10d
+            - --web.route-prefix=/
+            - --storage.tsdb.no-lockfile
+            - --storage.tsdb.min-block-duration=2h
+            - --storage.tsdb.max-block-duration=2h
+            - --log.level=debug
+          ports:
+            - name: web
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /-/healthy
+              port: web
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 120
+            httpGet:
+              path: /-/ready
+              port: web
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: monitor-conf
+              mountPath: /etc/prometheus
+            - name: prometheus-storage
+              mountPath: /prometheus/data
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+        - name: alertmanager
+          image: k8smaster.qfusion.irds/irds/alertmanager:v0.23.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --storage.path=/alertmanager/data
+            - --cluster.advertise-address=0.0.0.0:9093
+            - --config.file=/etc/alertmanager/alertmanager.yml
+          ports:
+            - containerPort: 9093
+              protocol: TCP
+              name: alertmanager
+          volumeMounts:
+            - name: monitor-conf
+              mountPath: /etc/alertmanager
+            - name: tmpl-volume
+              mountPath: /etc/alert/tmpl
+            - name: alertmanager-storage
+              mountPath: /alertmanager/data
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+      volumes:
+        - name: phoenix-conf
+          emptyDir: { }
+        - name: monitor-conf
+          emptyDir: { }
+        - name: tmpl-volume
+          emptyDir: { }
+        - name: my-cnf
+          configMap:
+            name: mysql-conf
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+      affinity: 
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: phoenix
+            topologyKey: kubernetes.io/hostname
+      
+      nodeSelector: 
+        qfusion/master: "true"
+      tolerations: 
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: prometheus-storage
+        namespace: dts
+      spec:
+        storageClassName: csi-localpv
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 200Gi
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: alertmanager-storage
+        namespace: dts
+      spec:
+        storageClassName: csi-localpv
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Mi

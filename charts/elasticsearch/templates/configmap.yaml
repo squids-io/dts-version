@@ -1,0 +1,45 @@
+apiVersion: v1
+data:
+  elasticsearch.yml: |
+    cluster:
+      name:  ${CLUSTER_NAME:escluster}
+    thread_pool:
+      write:
+        size: {{ add .Values.processors 1 }}
+    node:
+      master: ${NODE_MASTER}    # true of false
+      data: ${NODE_DATA}    # true of false
+      name: ${NODE_NAME}
+      ingest: true
+      max_local_storage_nodes: 1
+    processors: {{ .Values.processors }}
+    network.host: {{ .Values.networkHost }}
+    path:
+      data: /usr/share/elasticsearch/data
+      logs: /usr/share/elasticsearch/log
+    bootstrap:
+      memory_lock: false
+      system_call_filter: false
+    http:
+      enabled: true
+      compression: true
+    discovery:
+      zen:
+        ping.unicast.hosts: elasticsearch-discovery
+        minimum_master_nodes: ${NUMBER_OF_MASTER}
+    xpack.ml.enabled: false
+kind: ConfigMap
+metadata:
+  name: {{template "elasticsearch.name" . }}
+---
+{{ if .Values.cleaner.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{include "elasticsearch.name" . }}-cleaner-config
+data:
+  config.yaml: |
+    defaultExpire: {{.Values.cleaner.defaultExpire}}
+    expires:
+      auditlog: {{.Values.cleaner.auditlogExpire}}
+{{- end -}}

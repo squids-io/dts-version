@@ -1,0 +1,166 @@
+---
+# Source: dts-api-server/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dboperator
+  namespace: dts
+---
+# Source: dts-api-server/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dboperator-dts
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dboperator-dts
+subjects:
+  - kind: ServiceAccount
+    name: dboperator
+    namespace: dts
+---
+# Source: dts-api-server/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dts-api-server
+  namespace: dts
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: dts-api-server
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+    - name: grpc
+      port: 3001
+      targetPort: 3001
+---
+# Source: dts-api-server/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dts-api-server
+  namespace: dts
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dts-api-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      name: dts-api-server
+      labels:
+        app.kubernetes.io/name: dts-api-server
+        qfusion/useIstio: "true"
+    spec:
+      serviceAccountName: dboperator
+      terminationGracePeriodSeconds: 30
+      affinity: 
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - dts-api-server
+            topologyKey: kubernetes.io/hostname
+      
+      tolerations: 
+        - effect: NoExecute
+          key: qfusion/master
+          operator: Exists
+        - effect: NoExecute
+          key: node-role.kubernetes.io/master
+          operator: Exists
+          tolerationSeconds: 60
+      containers:
+        - name: api
+          image: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          env:
+            - name: DBMOTION_IMAGE
+              value: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+            - name: KAFKA_IMAGE
+              value: k8smaster.qfusion.irds/irds/kafka:3.5.1
+            - name: DBMOTION_WEB_ADDR
+              value: http://dts-api-server.qfusion:3000
+            - name: DBMOTION_PUB_IP
+              value: 127.0.0.1
+            - name: DBMOTION_GORM_DEBUG
+              value: "yes"
+            - name: SERVER_MODE
+              value: "PROXY"
+            - name: K8S_NAMESPACE
+              value: "dts"
+            - name: NODE_SELECTOR_KEY
+              value: "qfusion/node"
+            - name: NODE_SELECTOR_VALUE
+              value: ""
+            - name: MASTER_TOLERATION
+              value: "y"
+            - name: MYSQL_HOST
+              value: qfusion-cmdb0.qfusion
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_USER_NAME
+              value: root
+            - name: MYSQL_PASSWORD
+              value: letsg0
+            - name: CPU_REQUEST
+              value: 100m
+            - name: CPU_LIMIT
+              value: "4"
+            - name: MEMORY_REQUEST
+              value: 100Mi
+            - name: MEMORY_LIMIT
+              value: 8Gi
+            - name: ELASTICSEARCH_URI
+              value: http://elasticsearch-logging.dts:9200
+            - name: PHOENIX_ENDPOINT
+              value: http://phoenix.dts:9091/phoenix/api/v2/
+            - name: ELASTICSEARCH_IDX
+              value: "qfrds-dbmotion.log*"
+            - name: SAAS_MODE
+              value: "HCS"
+            - name: CMDB_URI
+              value: root:letsg0@qfusion-cmdb0.qfusion:3306/webserver
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+            - name: dts-proxy-files
+              mountPath: /client_files
+            - name: log-volume
+              mountPath: /dbmotion/log
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+            - name: grpc
+              containerPort: 3001
+              protocol: TCP
+      volumes:
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: log-volume
+          emptyDir: { }
+        - name: dts-proxy-files
+          emptyDir: { }

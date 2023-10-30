@@ -1,0 +1,7 @@
+- name: DBMotion
+  type: DBMotion
+  groupIntervalMinute: 5
+  repeatIntervalMinute: 240
+  metrics:
+    - name: task-status
+    - name: binlog-delay
