@@ -1,0 +1,3421 @@
+---
+# Source: elasticsearch/templates/serviceaccount.yaml
+# RBAC authn and authz
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elasticsearch-logging
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: elasticsearch/templates/configmap.yaml
+apiVersion: v1
+data:
+  elasticsearch.yml: |
+    cluster:
+      name:  ${CLUSTER_NAME:escluster}
+    thread_pool:
+      write:
+        size: 6
+    node:
+      master: ${NODE_MASTER}    # true of false
+      data: ${NODE_DATA}    # true of false
+      name: ${NODE_NAME}
+      ingest: true
+      max_local_storage_nodes: 1
+    processors: 5
+    network.host: 0.0.0.0
+    path:
+      data: /usr/share/elasticsearch/data
+      logs: /usr/share/elasticsearch/log
+    bootstrap:
+      memory_lock: false
+      system_call_filter: false
+    http:
+      enabled: true
+      compression: true
+    discovery:
+      zen:
+        ping.unicast.hosts: elasticsearch-discovery
+        minimum_master_nodes: ${NUMBER_OF_MASTER}
+    xpack.ml.enabled: false
+kind: ConfigMap
+metadata:
+  name: elasticsearch
+---
+# Source: elasticsearch/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-cleaner-config
+data:
+  config.yaml: |
+    defaultExpire: 30
+    expires:
+      auditlog: 7
+---
+# Source: elasticsearch/templates/serviceaccount.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elasticsearch-logging-dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "services"
+      - "namespaces"
+      - "endpoints"
+    verbs:
+      - "get"
+---
+# Source: elasticsearch/templates/serviceaccount.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elasticsearch-logging-dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+    k8s-app: elasticsearch-logging
+subjects:
+- kind: ServiceAccount
+  name: elasticsearch-logging
+  namespace: dts
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: elasticsearch-logging-dts
+  apiGroup: ""
+---
+# Source: elasticsearch/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-discovery
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+  ports:
+    - name: transport
+      port: 9300
+      protocol: TCP
+    - name: db
+      port: 9200
+      protocol: TCP
+  clusterIP: None
+---
+# Source: elasticsearch/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: 
+    elasticsearch-logging
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  ports:
+    - port: 9200
+      protocol: TCP
+      targetPort: db
+  selector:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+---
+# Source: elasticsearch/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: elasticsearch
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch
+      app.kubernetes.io/instance: elasticsearch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/instance: elasticsearch
+    spec:
+      nodeSelector: 
+        qfusion/master: "true"
+      tolerations: 
+        - effect: NoSchedule
+          key: qfusion/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+      initContainers: # will always initialize before other containers
+        - name: init-sysctl
+          image: k8smaster.qfusion.irds/irds/alpine:3.6
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c"," sysctl -w vm.max_map_count=262144 && chown -R 1000 /usr/share/elasticsearch/data"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: storage
+      containers:  # specification of normal containers
+        - name: es
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.23
+          imagePullPolicy: Always
+          env:
+            - name: "CLUSTER_NAME"
+              value: "myescluster"
+            - name: "DISCOVERY_SERVICE"
+              value: "elasticsearch-discovery"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: "NODE_MASTER"
+              value: "true"
+            - name: "NODE_DATA"
+              value: "true"
+            - name: "NUMBER_OF_MASTER"
+              value: "2"
+            - name: ES_JAVA_OPTS
+              value: -Xms2g -Xmx2g
+          ports:
+            - containerPort: 9200
+              name: db
+              protocol: TCP
+            - containerPort: 9300
+              name: transport
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl --fail 127.0.0.1:9200/_cluster/health && curl --fail 127.0.0.1:9200/.qf-ack-index-3.13.10
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: storage
+            - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              name: config
+              subPath: elasticsearch.yml
+      volumes:
+        - name: storage
+          hostPath:
+            path: /opt/dts/elasticsearch 
+            type: DirectoryOrCreate
+        - configMap:
+            defaultMode: 420
+            items:
+              - key: elasticsearch.yml
+                path: elasticsearch.yml
+            name: elasticsearch
+          name: config
+---
+# Source: elasticsearch/templates/job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elasticsearch-config-job-v3.13.11
+  namespace: dts
+spec:
+  template:
+    spec:
+      nodeSelector: 
+            qfusion/master: "true"
+      serviceAccountName: elasticsearch-logging
+      containers:
+        - name: runner
+          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.1"
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/bash",  "/config-es.sh" ]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ES_PORT
+              value: "9200"
+            - name: SERVICE_NAME
+              value: elasticsearch-discovery
+            - name: MAX_RESULT_WINDOW
+              value: "50000"
+      restartPolicy: OnFailure
+  backoffLimit: 5
+---
+# Source: elasticsearch/templates/cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: elasticsearch-cleaner
+spec:
+  schedule: "30 23 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          nodeSelector: 
+            qfusion/master: "true"
+          tolerations: 
+            - effect: NoSchedule
+              key: qfusion/master
+              operator: Exists
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/master
+              operator: Exists
+          containers:
+          - name: efk-cleaner
+            image: k8smaster.qfusion.irds/irds/efk-cleaner:1.0
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+            - name: config
+              mountPath: /etc/config.yaml
+              subPath: config.yaml
+            - name: localtime
+              mountPath: /etc/localtime
+          volumes:
+          - name: config
+            configMap:
+              items:
+              - key: config.yaml
+                path: config.yaml
+              name: elasticsearch-cleaner-config
+          - name: localtime
+            hostPath:
+              path: /etc/localtime
+          restartPolicy: OnFailure
+---
+# Source: fluentbit/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: fluent-bit
+    namespace: dts
+---
+# Source: fluentbit/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: fluentbit
+    namespace: dts
+data:
+  filter_cgolib.conf: |-
+    [FILTER]
+        Name  go
+        Match  *
+        golib_so /fluent-bit/lib/cgolib.so
+        lib_args -logtostderr=true
+        # modules that you must init, split by ','
+        init_modules k8s
+        # for k8s init
+        # kube_config /fluent-bit/etc/kube-config   // in cluster , no need config
+        # filters in cgolib you want to use. key must begin with 'filters'
+        filters_1  parseFilter
+        parse_config_file  /fluent-bit/etc/filter_cgolib.yaml
+  
+    [FILTER]
+        name   grep
+        match  containerlog
+        regex  log .+
+  filter_cgolib.yaml: |
+    parseConfig:
+      match:
+        # 不要使用pod的label或者annotation进行匹配
+        # 使用路径或者容器名称进行匹配
+        matchField:
+          - name: alllog
+            key: tag
+            matchRegex: ".+"
+          - name: empdirlog
+            key: logpath
+            matchRegex: .*empty-dir.*
+          - name: containerlog
+            key: logpath
+            matchRegex: .*log/containers.*
+          - name: mysqllog
+            key: tag
+            matchRegex: 'mysql-errorlog'
+          - name: mssqllog
+            key: logpath
+            matchRegex: '.+qfusion.*_mssql.+'
+          - name: tidblog
+            key: logpath
+            matchRegex: '.*(-tidb-|-pd-|-tikv-).*.log'
+          - name: mysqlslowlog
+            key: tag
+            matchRegex: 'mysql-slowlog'
+          - name: mysqlauditlog
+            key: tag
+            matchRegex: 'mysql-auditlog'
+          - name: maxscalelog
+            key: logpath
+            matchRegex: '.*_.+-proxy-\d+.+.log'
+          - name: tidbAuditlog
+            key: tag
+            matchRegex: 'tidb-auditlog'
+          - name: pgErrorlog
+            key: tag
+            matchRegex: 'postgres-errorlog'
+          - name: oraAlertLog
+            key: tag
+            matchRegex: 'oracle-alertlog'
+          - name: kafkaLog
+            key: container
+            matchRegex: '^kafka$'
+          - name: gaussdbLog
+            key: tag
+            matchRegex: 'gaussdb-log'
+  
+      parser:
+        parseRegex:
+          - name: getPodUid
+            key: logpath
+            preserve_key: true
+            regex: ".*pods/?(?P<podUid>[a-z0-9](?:[-a-z0-9]*[a-z0-9]))?/volumes/.*"
+          - name: getPodName
+            key: logpath
+            preserve_key: true
+            regex: '([^.]+)?/(?P<podName>[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<podNamespace>[^_]+)_(?P<container>.+)-(?P<dockerId>[a-z0-9]{64})\.log$'
+          - name: parseMssqlLog
+            key: log
+            regex: '^(\s?\d{4}-\d{1,2}-\d{1,2}\s\d+:\d+:\d+\.\d+)?(\s?)(?P<log>.*)'
+          - name: parseMaxScaleLog
+            key: log
+            regex: '(\d+-\d+-\d+\s\d+:\d+:\S+\s)?\s*(?P<logLevel>\w+)\s*:\s*(?P<log>(.+))'
+          - name: parseTidbLog
+            key: log
+            regex: '\[(?P<dbtime>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{2}:\d{2}?)\](\s+)\[(?P<logLevel>[A-Z]+?)\](\s+)\[(?P<dblogpath>[a-z0-9_\.:<>]+?)\](\s+)(?P<log>(.|\n)*)'
+          - name: parsePgLog
+            key: log
+            regex: '^(<.)?(?P<time>\d{4}-\d{2}-\d{2}.\d{2}:\d{2}:\d{2}.\d{3}).\w+.(>|\[\d+\]).(?P<log>.\w+: (.|\n).*)'
+          - name: parseOraMeta
+            key: logpath
+            preserve_key: true
+            regex: '^/opt/(?P<version>.+)/diag/rdbms/(?P<uname>.+)/(?P<name>.+)/trace/alert_.+\.log'
+          - name: parseKafkaLog
+            key: log
+            regex: '^(?P<timestamp>[0-9]{1,4}.[0-9]{1,2}.[0-9]{1,2} [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},\d{3}) (?P<logLevel>[^ ]*) (?P<log>[^\n]*) \((?P<logType>[^\]]*)\) \[(?P<thread>[^\]]*)\]'
+  
+        parseK8sUid:
+          - name: getPodInfoByUid
+            key: podUid
+        parseK8sName:
+          - name: getPodInfoByName
+            key: podName
+            namespaceKey: podNamespace
+        parseJson:
+          - name: externalLog
+            key: log
+            preserve_key: false
+        parseTimer:
+          - name: parseMySQLTime
+            key: time
+            formats:
+            - format: 2006-01-02T15:04:05.000000+08:00
+            - offset: 8
+              format: 2006-01-02 15:04:05
+          - name: parseMySQLAuditTime
+            formats:
+              - format: 2006-01-02T15:04:05Z
+              - format: 2006-01-02T15:04:05 MST
+            key: timestamp
+          - name: parseTidbAuditTime
+            key: time
+            formats:
+            - format: 2006/01/02 15:04:05.000 +08:00
+          - name: parseGaussDBTime
+            key: time
+            formats:
+            - format: 2006-01-02 15:04:05.000
+        parseMySQLSlowLog:
+          - name: parseMySQLSlowLog
+            key: log
+        parseMySQLAuditLog:
+          - name: parseMySQLAuditLog
+        parseTidbAuditLog:
+          - name: parseTidbAuditLog
+        parseTruncated:
+          - name: truncatedLog
+            # 8k
+            maxLength: 8192
+    filters:
+      - name: emptydirGetUid
+        matchType: matchAll
+        matchers:
+          - empdirlog
+        parsers:
+          - getPodUid
+          - getPodInfoByUid
+      - name: kuberLogGetInfo
+        matchType: matchAll
+        matchers:
+          - containerlog
+        parsers:
+          - getPodName
+          - getPodInfoByName
+      - name: mysqllog
+        matchType: matchAll
+        matchers:
+          - mysqllog
+        parsers:
+          - parseMySQLTime
+      - name: mysqlslowLog
+        matchType: matchOne
+        matchers:
+          - mysqlslowlog
+        parsers:
+          - parseMySQLSlowLog
+      - name: mysqlauditlog
+        matchType: matchOne
+        matchers:
+          - mysqlauditlog
+        parsers:
+          - externalLog
+          - parseMySQLAuditLog
+          - parseMySQLAuditTime
+      - name: mssqllog
+        matchType: matchAll
+        matchers:
+        - mssqllog
+        parsers:
+        - parseMssqlLog
+      - name: maxscalelog
+        matchType: matchAll
+        matchers:
+          - maxscalelog
+        parsers:
+          - parseMaxScaleLog
+      - name: tidbAuditlog
+        matchType: matchAll
+        matchers:
+          - tidbAuditlog
+        parsers:
+          - parseTidbAuditLog
+      - name: tidblog
+        matchType: matchAll
+        matchers:
+          - tidblog
+        parsers:
+          - parseTidbLog
+      - name: pgerrorlog
+        matchType: matchAll
+        matchers:
+          - pgErrorlog
+        parsers:
+          - parsePgLog
+      - name: oraAlertLog
+        matchType: matchAll
+        matchers:
+          - oraAlertLog
+        parsers:
+          - parseOraMeta
+      - name: kafkaLog
+        matchType: matchAll
+        matchers:
+          - kafkaLog
+        parsers:
+          - parseKafkaLog
+      - name: gaussdbLog
+        matchType: matchAll
+        matchers:
+          - gaussdbLog
+        parsers:
+          - parseGaussDBTime
+      # truncated parser必须放到最后，其他parser要在这个parser之前
+      - name: truncated
+        matchType: matchAll
+        matchers:
+          - alllog
+        parsers:
+          - truncatedLog
+  fliter_global.conf: |
+    [FILTER]
+        # 过滤空行
+        Name        grep
+        Match       *.log
+        Exclude     \s+
+  
+    [FILTER]
+        # 排除掉分隔符，标题型日志
+        Name    grep
+        Match   *
+        Exclude ^(\*|=)+.*(\*|=)+$
+  fluent-bit-db.conf: |
+    [SERVICE]
+        Flush         1
+        # Log_Level     Trace
+        Log_Level     info
+        Daemon        off
+        Parsers_File  parsers_parser.conf
+        Parsers_File  parsers_db.conf
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+        storage.path              ${FLUENT_FILESYSTEM_PATH}
+        storage.sync              normal
+        storage.checksum          off
+        storage.backlog.mem_limit 100M
+        scheduler.base   3
+        scheduler.cap    600
+  
+    @INCLUDE input_db.conf
+    @INCLUDE filter_*.conf
+    @INCLUDE output_*.conf
+  fluent-bit-k8s.conf: |
+    [SERVICE]
+        Flush         1
+        # Log_Level     Trace
+        Log_Level     info
+        Daemon        off
+        Parsers_File  parsers_parser.conf
+        Parsers_File  parsers_db.conf
+        storage.path              ${FLUENT_FILESYSTEM_PATH}
+        storage.sync              normal
+        storage.checksum          off
+        storage.backlog.mem_limit 100M
+        scheduler.base   3
+        scheduler.cap    600
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+  
+    @INCLUDE input_k8s.conf
+    @INCLUDE filter_*.conf
+    @INCLUDE output_*.conf
+  input_db.conf: |
+    [INPUT]
+        Name              tail
+        Alias             es_log
+        Tag               dbmotion.log
+        Path              /var/lib/kubelet/pods/*/volumes/kubernetes.io~empty-dir/log-volume/*/dbmotion.log
+        Multiline         On
+        Multiline_Flush   5
+        Parser_Firstline  dbmotion_parser
+        Path_Key          logpath
+        DB                /var/log/flb_dbmotion.db
+        Mem_Buf_Limit     300MB
+        Skip_Long_Lines   On
+        Buffer_Max_Size   200k
+        Buffer_Chunk_Size 100k
+        Refresh_Interval  3
+  input_k8s.conf: |
+    [INPUT]
+        Name              tail
+        Tag               containerlog
+        Alias             container_log
+        Path              /var/log/containers/*.log
+        Exclude_Path      /var/log/containers/*fluent-bit*.log,/var/log/containers/*kubevirt*.log
+        Parser            ${FLUENT_CONTAINER_LOG_PARSER}
+        Path_Key          logpath
+        DB                /var/log/flb_kube.db
+        Mem_Buf_Limit     500MB
+        Buffer_Max_Size   800k
+        storage.type  filesystem
+        Buffer_Chunk_Size 700k
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+  limits.conf: |
+    * soft nofile 65534
+    * hard nofile 65534
+    root soft nofile 65534
+    root hard nofile 65534
+  output_es.conf: |+
+    [OUTPUT]
+        Name            es
+        Alias           es_log
+        Match           *
+        Host            ${FLUENT_ELASTICSEARCH_HOST}
+        Port            9200
+        Logstash_Format On
+        Logstash_Prefix log
+        Include_Tag_Key Off
+        Retry_Limit     False
+        Generate_ID     on
+        Trace_Error     on
+        storage.total_limit_size  ${FLUENT_FILESYSTEM_LIMIT_SIZE}
+        Write_Operation upsert
+        Logstash_Prefix_Key tag
+  
+  parsers_db.conf: |-
+    [PARSER]
+        Name        dbmotion_parser
+        Format      json
+  parsers_parser.conf: |+
+    [PARSER]
+        Name        docker
+        Format      json
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+        Time_Keep   On
+        # Command      |  Decoder | Field | Optional Action
+        # =============|==================|=================
+        Decode_Field_As   escaped    log
+  
+    [PARSER]
+        Name        cri
+        Format      regex
+        Regex       ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<log>.*)$
+        Time_Key    time
+        Time_Keep   On
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+  
+    [PARSER]
+        Name        time_parser
+        Format      regex
+        Regex       ^(?<time>\d{4}-\d{2}-\d{2}[\S| ]\d{2}:\d{2}:\d{2}\.[\d|+|:]*)(?<log>(.|\n)*)
+  
+    [PARSER]
+        Name        json_parser
+        Format      json
+---
+# Source: fluentbit/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: fluent-bit-read-dts
+rules:
+    - apiGroups: [""]
+      resources:
+          - namespaces
+          - pods
+      verbs: ["get", "list", "watch"]
+---
+# Source: fluentbit/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: fluent-bit-read-dts
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: fluent-bit-read-dts
+subjects:
+    - kind: ServiceAccount
+      name: fluent-bit
+      namespace: dts
+---
+# Source: fluentbit/templates/daemonset.yaml
+# 采集数据库相关的日志
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentbit-database
+  namespace: dts
+  labels:
+    helm.sh/chart: fluentbit-0.1.0
+    app.kubernetes.io/name: fluentbit
+    app.kubernetes.io/instance: fluentbit
+    app.kubernetes.io/version: "1.4.5"
+    app.kubernetes.io/managed-by: Helm
+    type: database
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fluentbit
+      app.kubernetes.io/instance: fluentbit
+      type: database
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: fluentbit-0.1.0
+        app.kubernetes.io/name: fluentbit
+        app.kubernetes.io/instance: fluentbit
+        app.kubernetes.io/version: "1.4.5"
+        app.kubernetes.io/managed-by: Helm
+        type: database
+    spec:
+      tolerations: 
+        - effect: NoSchedule
+          key: qfusion/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+      containers:
+        - name: fluent-bit
+          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 2020
+          command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit-db.conf"]
+          env:
+            - name: FLUENT_ELASTICSEARCH_HOST
+              value: "elasticsearch-logging.dts.svc.cluster.local"
+            - name: FLUENT_ELASTICSEARCH_PORT
+              value: "9200"
+            - name: FLUENT_FILESYSTEM_LIMIT_SIZE
+              value: 10G
+            - name: FLUENT_FILESYSTEM_PATH
+              value: /flb-storage/database
+            - name: FLUENT_CONTAINER_LOG_PARSER
+              value: docker
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: varlibpodcontainers
+              mountPath: /var/lib/kubelet/pods
+              readOnly: true
+            - name: fluent-bit-config
+              mountPath: /fluent-bit/etc/
+            - name: containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: limit
+              mountPath: /etc/security/limits.conf
+              subPath: limits
+            - mountPath: /etc/localtime
+              name: localtime
+            - mountPath: /flb-storage
+              name: storage
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: storage
+          hostPath:
+            path: /opt/dts/flb-storage
+        - name: varlibpodcontainers
+          hostPath:
+            path: /var/lib/kubelet/pods
+        - name: containers
+          hostPath:
+              path: /var/lib/docker/containers
+        - name: fluent-bit-config
+          configMap:
+            name: fluentbit
+        - name: limit
+          configMap:
+            name: fluentbit
+            items:
+              - key: limits.conf
+                path: limits
+        - hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai
+          name: localtime
+      serviceAccountName: fluent-bit
+---
+# Source: fluentbit/templates/daemonset.yaml
+# 采集k8s容器相关的日志
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentbit-k8s
+  namespace: dts
+  labels:
+    helm.sh/chart: fluentbit-0.1.0
+    app.kubernetes.io/name: fluentbit
+    app.kubernetes.io/instance: fluentbit
+    app.kubernetes.io/version: "1.4.5"
+    app.kubernetes.io/managed-by: Helm
+    type: k8s
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fluentbit
+      app.kubernetes.io/instance: fluentbit
+      type: k8s
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: fluentbit-0.1.0
+        app.kubernetes.io/name: fluentbit
+        app.kubernetes.io/instance: fluentbit
+        app.kubernetes.io/version: "1.4.5"
+        app.kubernetes.io/managed-by: Helm
+        type: k8s
+    spec:
+      tolerations: 
+        - effect: NoSchedule
+          key: qfusion/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+      containers:
+        - name: fluent-bit
+          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 2020
+          command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit-k8s.conf"]
+          env:
+            - name: FLUENT_ELASTICSEARCH_HOST
+              value: "elasticsearch-logging.dts.svc.cluster.local"
+            - name: FLUENT_ELASTICSEARCH_PORT
+              value: "9200"
+            - name: FLUENT_FILESYSTEM_LIMIT_SIZE
+              value: 10G
+            - name: FLUENT_FILESYSTEM_PATH
+              value: /flb-storage/k8s
+            - name: FLUENT_CONTAINER_LOG_PARSER
+              value: docker
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: fluent-bit-config
+              mountPath: /fluent-bit/etc/
+            - name: limit
+              mountPath: /etc/security/limits.conf
+              subPath: limits
+            - mountPath: /etc/localtime
+              name: localtime
+            - mountPath: /flb-storage
+              name: storage
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: fluent-bit-config
+          configMap:
+            name: fluentbit
+        - name: limit
+          configMap:
+            name: fluentbit
+            items:
+              - key: limits.conf
+                path: limits
+        - hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai
+          name: localtime
+        - name: storage
+          hostPath:
+            path: /opt/dts/flb-storage
+      serviceAccountName: fluent-bit
+---
+# Source: grafana/templates/grafana-cofig.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+data:
+  datasources.yaml: |
+    # config file version
+    apiVersion: 1
+    # list of datasources to insert/update depending
+    # what's available in the database
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        orgId: 1
+        url: http://prometheus:9090
+        # <bool> enable/disable basic auth
+        basicAuth: false
+        # <bool> enable/disable with credentials headers
+        withCredentials: false
+        # <bool> mark as default datasource. Max one per org
+        isDefault: true
+        version: 2
+        # <bool> allow users to edit datasources from the UI.
+        editable: true
+  dashboards.yaml: |
+    # # config file version
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        folderUid: ''
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+  grafana.ini: |
+    ##################### Grafana Configuration Defaults #####################
+    #
+    # Do not modify this file in grafana installs
+    #
+
+    # possible values : production, development
+      app_mode = production
+
+      # instance name, defaults to HOSTNAME environment variable value or hostname if HOSTNAME var is empty
+      instance_name = ${HOSTNAME}
+
+    #################################### Paths ###############################
+      [paths]
+    # Path to where grafana can store temp files, sessions, and the sqlite3 db (if that is used)
+      data = data
+
+      # Temporary files in `data` directory older than given duration will be removed
+      temp_data_lifetime = 24h
+
+      # Directory where grafana can store logs
+      logs = data/log
+
+      # Directory where grafana will automatically scan and look for plugins
+      plugins = data/plugins
+
+      # folder that contains provisioning config files that grafana will apply on startup and while running.
+      provisioning = conf/provisioning
+
+    #################################### Server ##############################
+      [server]
+    # Protocol (http, https, h2, socket)
+      protocol = http
+
+      # The ip address to bind to, empty will bind to all interfaces
+      http_addr =
+
+      # The http port to use
+      http_port = 3000
+
+      # The public facing domain name used to access grafana from a browser
+      domain = 192.168.1.2
+
+      # Redirect to correct domain if host header does not match domain
+      # Prevents DNS rebinding attacks
+      enforce_domain = false
+
+      # The full public facing url
+      root_url = %(protocol)s://%(domain)s:%(http_port)s/dts/grafana/
+
+      # Serve Grafana from subpath specified in `root_url` setting. By default it is set to `false` for compatibility reasons.
+      serve_from_sub_path = true
+
+      # Log web requests
+      router_logging = false
+
+      # the path relative working path
+      static_root_path = public
+
+      # enable gzip
+      enable_gzip = false
+
+      # https certs & key file
+      cert_file =
+      cert_key =
+
+      # Unix socket path
+      socket = /var/run/grafana.sock
+
+    #################################### Database ############################
+      [database]
+    # You can configure the database connection by specifying type, host, name, user and password
+    # as separate properties or as on string using the url property.
+
+    # Either "mysql", "postgres" or "sqlite3", it's your choice
+      type = sqlite3
+      host = 127.0.0.1:3306
+      name = grafana
+      user = root
+      # If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""
+      password =
+      # Use either URL or the previous fields to configure the database
+      # Example: mysql://user:secret@host:port/database
+      url =
+
+      # Max idle conn setting default is 2
+      max_idle_conn = 2
+
+      # Max conn setting default is 0 (mean not set)
+      max_open_conn =
+
+      # Connection Max Lifetime default is 14400 (means 14400 seconds or 4 hours)
+      conn_max_lifetime = 14400
+
+      # Set to true to log the sql calls and execution times.
+      log_queries =
+
+      # For "postgres", use either "disable", "require" or "verify-full"
+      # For "mysql", use either "true", "false", or "skip-verify".
+      ssl_mode = disable
+
+      ca_cert_path =
+      client_key_path =
+      client_cert_path =
+      server_cert_name =
+
+      # For "sqlite3" only, path relative to data_path setting
+      path = grafana.db
+
+      # For "sqlite3" only. cache mode setting used for connecting to the database
+      cache_mode = private
+
+    #################################### Cache server #############################
+      [remote_cache]
+    # Either "redis", "memcached" or "database" default is "database"
+      type = database
+
+      # cache connectionstring options
+      # database: will use Grafana primary database.
+      # redis: config like redis server e.g. `addr=127.0.0.1:6379,pool_size=100,db=0,ssl=false`. Only addr is required. ssl may be 'true', 'false', or 'insecure'.
+      # memcache: 127.0.0.1:11211
+      connstr =
+
+    #################################### Data proxy ###########################
+      [dataproxy]
+
+    # This enables data proxy logging, default is false
+      logging = false
+
+      # How long the data proxy should wait before timing out default is 30 (seconds)
+      timeout = 30
+
+      # If enabled and user is not anonymous, data proxy will add X-Grafana-User header with username into the request, default is false.
+      send_user_header = false
+
+    #################################### Analytics ###########################
+      [analytics]
+    # Server reporting, sends usage counters to stats.grafana.org every 24 hours.
+    # No ip addresses are being tracked, only simple counters to track
+    # running instances, dashboard and error counts. It is very helpful to us.
+    # Change this option to false to disable reporting.
+      reporting_enabled = true
+
+      # Set to false to disable all checks to https://grafana.com
+      # for new versions (grafana itself and plugins), check is used
+      # in some UI views to notify that grafana or plugin update exists
+      # This option does not cause any auto updates, nor send any information
+      # only a GET request to https://grafana.com to get latest versions
+      check_for_updates = true
+
+      # Google Analytics universal tracking code, only enabled if you specify an id here
+      google_analytics_ua_id =
+
+      # Google Tag Manager ID, only enabled if you specify an id here
+      google_tag_manager_id =
+
+    #################################### Security ############################
+      [security]
+    # disable creation of admin user on first start of grafana
+      disable_initial_admin_creation = false
+
+      # default admin user, created on startup
+      admin_user = admin
+
+      # default admin password, can be changed before first start of grafana, or in profile settings
+      admin_password = Cljslrl0620
+
+      # used for signing
+      secret_key = SW2YcwTIb9zpOOhoPsMm
+
+      # disable gravatar profile images
+      disable_gravatar = true
+
+      # data source proxy whitelist (ip_or_domain:port separated by spaces)
+      data_source_proxy_whitelist =
+
+      # disable protection against brute force login attempts
+      disable_brute_force_login_protection = false
+
+      # set to true if you host Grafana behind HTTPS. default is false.
+      cookie_secure = false
+
+      # set cookie SameSite attribute. defaults to `lax`. can be set to "lax", "strict" and "none"
+      cookie_samesite = lax
+
+      # set to true if you want to allow browsers to render Grafana in a <frame>, <iframe>, <embed> or <object>. default is false.
+      allow_embedding = true
+
+      # Set to true if you want to enable http strict transport security (HSTS) response header.
+      # This is only sent when HTTPS is enabled in this configuration.
+      # HSTS tells browsers that the site should only be accessed using HTTPS.
+      # The default will change to true in the next minor release, 6.3.
+      strict_transport_security = false
+
+      # Sets how long a browser should cache HSTS. Only applied if strict_transport_security is enabled.
+      strict_transport_security_max_age_seconds = 86400
+
+      # Set to true if to enable HSTS preloading option. Only applied if strict_transport_security is enabled.
+      strict_transport_security_preload = false
+
+      # Set to true if to enable the HSTS includeSubDomains option. Only applied if strict_transport_security is enabled.
+      strict_transport_security_subdomains = false
+
+      # Set to true to enable the X-Content-Type-Options response header.
+      # The X-Content-Type-Options response HTTP header is a marker used by the server to indicate that the MIME types advertised
+      # in the Content-Type headers should not be changed and be followed. The default will change to true in the next minor release, 6.3.
+      x_content_type_options = false
+
+      # Set to true to enable the X-XSS-Protection header, which tells browsers to stop pages from loading
+      # when they detect reflected cross-site scripting (XSS) attacks. The default will change to true in the next minor release, 6.3.
+      x_xss_protection = false
+
+    #################################### Dashboards ##################
+
+      [dashboards]
+    # Number dashboard versions to keep (per dashboard). Default: 20, Minimum: 1
+      versions_to_keep = 20
+
+    #################################### Users ###############################
+      [users]
+    # disable user signup / registration
+      allow_sign_up = true
+
+      # Allow non admin users to create organizations
+      allow_org_create = true
+
+      # Set to true to automatically assign new users to the default organization (id 1)
+      auto_assign_org = true
+
+      # Set this value to automatically add new users to the provided organization (if auto_assign_org above is set to true)
+      auto_assign_org_id = 1
+
+      # Default role new users will be automatically assigned (if auto_assign_org above is set to true)
+      auto_assign_org_role = Viewer
+
+      # Require email validation before sign up completes
+      verify_email_enabled = false
+
+      # Background text for the user field on the login page
+      login_hint = email or username
+      password_hint = password
+
+      # Default UI theme ("dark" or "light")
+      default_theme = light
+
+      # External user management
+      external_manage_link_url =
+      external_manage_link_name =
+      external_manage_info =
+
+      # Viewers can edit/inspect dashboard settings in the browser. But not save the dashboard.
+      viewers_can_edit = false
+
+      # Editors can administrate dashboard, folders and teams they create
+      editors_can_admin = false
+
+      [auth]
+    # Login cookie name
+      login_cookie_name = grafana_session
+
+      # The lifetime (days) an authenticated user can be inactive before being required to login at next visit. Default is 7 days.
+      login_maximum_inactive_lifetime_days = 7
+
+      # The maximum lifetime (days) an authenticated user can be logged in since login time before being required to login. Default is 30 days.
+      login_maximum_lifetime_days = 30
+
+      # How often should auth tokens be rotated for authenticated users when being active. The default is each 10 minutes.
+      token_rotation_interval_minutes = 10
+
+      # Set to true to disable (hide) the login form, useful if you use OAuth
+      disable_login_form = false
+
+      # Set to true to disable the signout link in the side menu. useful if you use auth.proxy
+      disable_signout_menu = false
+
+      # URL to redirect the user to after sign out
+      signout_redirect_url =
+
+      # Set to true to attempt login with OAuth automatically, skipping the login screen.
+      # This setting is ignored if multiple OAuth providers are configured.
+      oauth_auto_login = false
+
+      # limit of api_key seconds to live before expiration
+      api_key_max_seconds_to_live = -1
+
+    #################################### Anonymous Auth ######################
+      [auth.anonymous]
+    # enable anonymous access
+      enabled = true
+
+      # specify organization name that should be used for unauthenticated users
+      org_name = Main Org.
+
+      # specify role for unauthenticated users
+      org_role = Viewer
+
+
+
+    #################################### Basic Auth ##########################
+      [auth.basic]
+      enabled = true
+
+
+    #################################### Logging ##########################
+      [log]
+    # Either "console", "file", "syslog". Default is console and file
+    # Use space to separate multiple modes, e.g. "console file"
+      mode = console file
+
+      # Either "debug", "info", "warn", "error", "critical", default is "info"
+      level = info
+
+      # optional settings to set different levels for specific loggers. Ex filters = sqlstore:debug
+      filters =
+
+    # For "console" mode only
+      [log.console]
+      level =
+
+      # log line format, valid options are text, console and json
+      format = console
+
+    # For "file" mode only
+      [log.file]
+      level =
+
+      # log line format, valid options are text, console and json
+      format = text
+
+      # This enables automated log rotate(switch of following options), default is true
+      log_rotate = true
+
+      # Max line number of single file, default is 1000000
+      max_lines = 1000000
+
+      # Max size shift of single file, default is 28 means 1 << 28, 256MB
+      max_size_shift = 28
+
+      # Segment log daily, default is true
+      daily_rotate = true
+
+      # Expired days of log file(delete after max days), default is 7
+      max_days = 7
+
+      [log.syslog]
+      level =
+
+      # log line format, valid options are text, console and json
+      format = text
+
+      # Syslog network type and address. This can be udp, tcp, or unix. If left blank, the default unix endpoints will be used.
+      network =
+      address =
+
+      # Syslog facility. user, daemon and local0 through local7 are valid.
+      facility =
+
+      # Syslog tag. By default, the process' argv[0] is used.
+      tag =
+
+    #################################### Usage Quotas ########################
+      [quota]
+      enabled = false
+
+      #### set quotas to -1 to make unlimited. ####
+      # limit number of users per Org.
+      org_user = 10
+
+      # limit number of dashboards per Org.
+      org_dashboard = 100
+
+      # limit number of data_sources per Org.
+      org_data_source = 10
+
+      # limit number of api_keys per Org.
+      org_api_key = 10
+
+      # limit number of orgs a user can create.
+      user_org = 10
+
+      # Global limit of users.
+      global_user = -1
+
+      # global limit of orgs.
+      global_org = -1
+
+      # global limit of dashboards
+      global_dashboard = -1
+
+      # global limit of api_keys
+      global_api_key = -1
+
+      # global limit on number of logged in users.
+      global_session = -1
+
+    #################################### Alerting ############################
+      [alerting]
+    # Disable alerting engine & UI features
+      enabled = true
+      # Makes it possible to turn off alert rule execution but alerting UI is visible
+      execute_alerts = true
+
+      # Default setting for new alert rules. Defaults to categorize error and timeouts as alerting. (alerting, keep_state)
+      error_or_timeout = alerting
+
+      # Default setting for how Grafana handles nodata or null values in alerting. (alerting, no_data, keep_state, ok)
+      nodata_or_nullvalues = no_data
+
+      # Alert notifications can include images, but rendering many images at the same time can overload the server
+      # This limit will protect the server from render overloading and make sure notifications are sent out quickly
+      concurrent_render_limit = 5
+
+      # Default setting for alert calculation timeout. Default value is 30
+      evaluation_timeout_seconds = 30
+
+      # Default setting for alert notification timeout. Default value is 30
+      notification_timeout_seconds = 30
+
+      # Default setting for max attempts to sending alert notifications. Default value is 3
+      max_attempts = 3
+
+
+    #################################### Explore #############################
+      [explore]
+    # Enable the Explore section
+      enabled = true
+
+    #################################### Internal Grafana Metrics ############
+    # Metrics available at HTTP API Url /metrics
+      [metrics]
+      enabled              = true
+      interval_seconds     = 10
+      # Disable total stats (stat_totals_*) metrics to be generated
+      disable_total_stats = false
+
+      #If both are set, basic auth will be required for the metrics endpoint.
+      basic_auth_username =
+      basic_auth_password =
+
+    # Send internal Grafana metrics to graphite
+      [metrics.graphite]
+    # Enable by setting the address setting (ex localhost:2003)
+      address =
+      prefix = prod.grafana.%(instance_name)s.
+
+      [grafana_net]
+      url = https://grafana.com
+
+      [grafana_com]
+      url = https://grafana.com
+
+      [panels]
+    # here for to support old env variables, can remove after a few months
+      enable_alpha = false
+      disable_sanitize_html = false
+
+      [plugins]
+      enable_alpha = false
+      app_tls_skip_verify_insecure = false
+
+      [feature_toggles]
+    # enable features, separated by spaces
+      enable =
+---
+# Source: grafana/templates/grafana-dashboards.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: dts
+data:
+  dts-full-migration.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "每秒钟读写行数",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 1,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_data_row_count{event_type=\"read\", task_id=\"$task_id\"}[5m])",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_data_row_count{event_type=\"write\", task_id=\"$task_id\"}[5m])",
+              "hide": false,
+              "legendFormat": "写入目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "RPS",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "每秒钟读写的数据量",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "binBps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 6,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_data_bytes{event_type=\"read\", task_id=\"$task_id\"}[5m])",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_data_bytes{event_type=\"write\", task_id=\"$task_id\"}[5m])",
+              "hide": false,
+              "legendFormat": "写入目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Throughput",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "每秒钟处理的事务数",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 9
+          },
+          "id": 10,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_data_transaction_count{event_type=\"read\", task_id=\"$task_id\"}[5m])",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_data_transaction_count{event_type=\"write\", task_id=\"$task_id\"}[5m])",
+              "hide": false,
+              "legendFormat": "写入目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "TPS",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "数据库响应时间",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 9
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_data_sql_response_time{event_type=\"read\", task_id=\"$task_id\"}",
+              "legendFormat": "源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_data_sql_response_time{event_type=\"write\", task_id=\"$task_id\"}",
+              "hide": false,
+              "legendFormat": "目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Database Response Time",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "缓存的行数",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 17
+          },
+          "id": 12,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "max(dts_data_row_count{event_type=\"read\", task_id=\"$task_id\"}) - min(dts_data_row_count{event_type=\"write\", task_id=\"$task_id\"})",
+              "legendFormat": "缓存的行数",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Queued Rows",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "网络延时",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 17
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_network_delay{end_type=\"source\", task_id=\"$task_id\"}",
+              "legendFormat": "源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_network_delay{end_type=\"target\", task_id=\"$task_id\"}",
+              "hide": false,
+              "legendFormat": "目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Network Delay",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": false,
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "42933b995114",
+              "value": "42933b995114"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "definition": "label_values(task_id)",
+            "hide": 2,
+            "includeAll": false,
+            "label": "task_id",
+            "multi": false,
+            "name": "task_id",
+            "options": [],
+            "query": {
+              "query": "label_values(task_id)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "full migration",
+      "uid": "rKMxvp24k",
+      "version": 1,
+      "weekStart": ""
+    }
+  dts-sync-migration.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_binlog_delay{event_type=\"write\", task_id=\"$task_id\"}",
+              "legendFormat": "写目标端",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Write Delay",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_binlog_delay{event_type=\"read\", task_id=\"$task_id\"}",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Read Delay",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "每秒钟同步的行数",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 6,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_binlog_row_count{event_type=\"read\", task_id=\"$task_id\"}[30s])",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_binlog_row_count{event_type=\"write\", task_id=\"$task_id\"}[30s])",
+              "hide": false,
+              "legendFormat": "写目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "RPS",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "每秒钟同步的数据量",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "binBps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_binlog_bytes{event_type=\"read\", task_id=\"$task_id\"}[30s])",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_binlog_bytes{event_type=\"write\", task_id=\"$task_id\"}[30s])",
+              "hide": false,
+              "legendFormat": "写目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Throughput",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "每秒钟处理的事务数",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 10,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_binlog_transaction_count{event_type=\"read\", task_id=\"$task_id\"}[1m])",
+              "legendFormat": "读取源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "rate(dts_binlog_transaction_count{event_type=\"write\", task_id=\"$task_id\"}[1m])",
+              "hide": false,
+              "legendFormat": "写目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "TPS",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "数据库响应时间",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 12,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_binlog_sql_response_time{event_type=\"read\", task_id=\"$task_id\"}",
+              "legendFormat": "源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "builder",
+              "expr": "dts_binlog_sql_response_time{event_type=\"write\", task_id=\"$task_id\"}",
+              "hide": false,
+              "legendFormat": "目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Database Response Time",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "缓存的行数",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "max(dts_binlog_row_count{event_type=\"read\", task_id=\"$task_id\"}) - min(dts_binlog_row_count{event_type=\"write\", task_id=\"$task_id\"}) - min(dts_binlog_row_count{event_type=\"skip\", task_id=\"$task_id\"})",
+              "legendFormat": "缓存的行数",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Queued Rows",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "网络延时",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 16,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "dts_network_delay{end_type=\"source\", task_id=\"$task_id\"}",
+              "legendFormat": "源端",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "dts_network_delay{end_type=\"target\", task_id=\"$task_id\"}",
+              "hide": false,
+              "legendFormat": "目标端",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Network Delay",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": false,
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "42933b995114",
+              "value": "42933b995114"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "definition": "label_values(task_id)",
+            "hide": 2,
+            "includeAll": false,
+            "label": "task_id",
+            "multi": false,
+            "name": "task_id",
+            "options": [],
+            "query": {
+              "query": "label_values(task_id)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "sync migration",
+      "uid": "x6apn22Vk",
+      "version": 1,
+      "weekStart": ""
+    }
+---
+# Source: grafana/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: dts
+  annotations:
+    prometheus.io/scrape: 'true'
+  labels:
+    app.kubernetes.io/name: grafana
+spec:
+  selector:
+    app.kubernetes.io/name: grafana
+  ports:
+    - name: grafana
+      protocol: TCP
+      port: 3000
+  type: ClusterIP
+---
+# Source: grafana/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: dts
+  labels:
+    app.kubernetes.io/name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+  template:
+    metadata:
+      annotations:
+        grafana-version: '1.0'
+      name: grafana
+      labels:
+        app.kubernetes.io/name: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: k8smaster.qfusion.irds/irds/grafana:hcs-v9.2.8
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: admin
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_SECURITY_ALLOW_EMBEDDING
+              value: "true"
+          ports:
+            - name: grafana
+              containerPort: 3000
+          resources:
+            {}
+          volumeMounts:
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              subPath: datasources.yaml
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards/
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/grafana.ini
+              subPath: grafana.ini
+            
+      volumes:
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+        - name: grafana-provisioning
+          configMap:
+            name: grafana-provisioning
+        
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - dts-grafana
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      tolerations: 
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+---
+# Source: monitor/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+---
+# Source: monitor/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-dts
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+# Source: monitor/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-dts
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-dts
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: dts
+---
+# Source: monitor/templates/service.yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus-headless
+  namespace: dts
+  labels:
+    app.kubernetes.io/name: monitor
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: monitor
+  ports:
+    - name: web
+      protocol: TCP
+      port: 9090
+      targetPort: web
+    - name: grpc
+      port: 10901
+      targetPort: grpc
+---
+# Source: monitor/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    name: prometheus
+    kubernetes.io/cluster-service: 'true'
+spec:
+  ports:
+    - name: prometheus
+      nodePort: 32005
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  type: NodePort
+---
+# Source: monitor/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenix
+  labels:
+    name: phoenix
+    kubernetes.io/cluster-service: 'true'
+spec:
+  ports:
+    - name: phoenix
+      nodePort: 32003
+      port: 9091
+      protocol: TCP
+      targetPort: 9091
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  type: NodePort
+---
+# Source: monitor/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: alertmanager
+    kubernetes.io/cluster-service: 'true'
+  name: alertmanager
+spec:
+  ports:
+    - name: alertmanager
+      nodePort: 32006
+      port: 9093
+      protocol: TCP
+      targetPort: 9093
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  type: NodePort
+---
+# Source: monitor/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: monitor
+  namespace: dts
+  labels:
+    app.kubernetes.io/name: monitor
+spec:
+  serviceName: prometheus-headless
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: monitor
+  template:
+    metadata:
+      name: monitor
+      labels:
+        app.kubernetes.io/name: monitor
+        qfusion/useIstio: "true"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: dts-monitor-conf
+          image: k8smaster.qfusion.irds/irds/dbmotion-monitor-conf:latest
+          command:
+            - sh
+            - -c
+            - cp -r /phoenix-conf/* /phoenix && cp -r /monitor-conf/* /monitor && cp -r /alert-tmpl/* /alert
+          volumeMounts:
+            - name: phoenix-conf
+              mountPath: /phoenix
+            - name: monitor-conf
+              mountPath: /monitor
+            - name: tmpl-volume
+              mountPath: /alert
+      containers:
+        - name: phoenix
+          image: k8smaster.qfusion.irds/irds/phoenix:v1.4.1-dbmotion
+          imagePullPolicy: Always
+          args:
+            - "--database-address=qfusion-cmdb0.qfusion"
+            - "--database-port=3306"
+            - "--database-username=root"
+            - "--database-password=letsg0"
+            - "--database-database=dts_phoenix"
+            - "--data-dir=/etc/phoenix/monitor"
+            - "--rule-config=/rules.yml"
+            - "--prom-url=http://prometheus:9090"
+            - "--alert-url=http://alertmanager:9093"
+            - "--tmpl-dir=/etc/alert/tmpl"
+            - "--alerting-target-type-file-path=/etc/phoenix/conf/target_type.yml"
+            - "--alerting-type-file-path=/etc/phoenix/conf/alerting_type.yml"
+            - "--alerting-model-file-paths=/etc/phoenix/conf/dbmotion_model.yml"
+            - "--default-templates-file-path=/etc/phoenix/conf/templates.yml"
+            - "--notify-base-url=http://phoenix:9091"
+            - "--http-receivers-discovery-endpoint=http://webserver-cluster.qfusion/api/v1/phoenix/alerting_receivers"
+            - "--http-targets-discovery-endpoints=http://dts-api-server.qfusion:3000/api/motion/v2/alert/phoenix/targets"
+            - "--alert-hook=http://dts-api-server.qfusion:3000/api/motion/v2/alert/notice"
+            - "--http-discovery-interval=60"
+            - "--enable-multi-tenant=false"
+            - "--tailor-port=15100"
+          ports:
+            - containerPort: 9091
+              protocol: TCP
+              name: phoenix
+          volumeMounts:
+            - name: phoenix-conf
+              mountPath: /etc/phoenix/conf
+            - name: tmpl-volume
+              mountPath: /etc/alert/tmpl
+            - name: monitor-conf
+              mountPath: /etc/phoenix/monitor
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+        - name: prometheus
+          image: k8smaster.qfusion.irds/irds/prometheus:v2.43.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --web.enable-lifecycle
+            - --storage.tsdb.retention=180d
+            - --storage.tsdb.path=/prometheus/data
+            - --storage.tsdb.retention.time=10d
+            - --web.route-prefix=/
+            - --storage.tsdb.no-lockfile
+            - --storage.tsdb.min-block-duration=2h
+            - --storage.tsdb.max-block-duration=2h
+            - --log.level=debug
+          ports:
+            - name: web
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /-/healthy
+              port: web
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 120
+            httpGet:
+              path: /-/ready
+              port: web
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: monitor-conf
+              mountPath: /etc/prometheus
+            - name: prometheus-storage
+              mountPath: /prometheus/data
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+        - name: alertmanager
+          image: k8smaster.qfusion.irds/irds/alertmanager:v0.23.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --storage.path=/alertmanager/data
+            - --cluster.advertise-address=0.0.0.0:9093
+            - --config.file=/etc/alertmanager/alertmanager.yml
+          ports:
+            - containerPort: 9093
+              protocol: TCP
+              name: alertmanager
+          volumeMounts:
+            - name: monitor-conf
+              mountPath: /etc/alertmanager
+            - name: tmpl-volume
+              mountPath: /etc/alert/tmpl
+            - name: alertmanager-storage
+              mountPath: /alertmanager/data
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+      volumes:
+        - name: phoenix-conf
+          emptyDir: { }
+        - name: monitor-conf
+          emptyDir: { }
+        - name: tmpl-volume
+          emptyDir: { }
+        - name: my-cnf
+          configMap:
+            name: mysql-conf
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+      affinity: 
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: phoenix
+            topologyKey: kubernetes.io/hostname
+      
+      nodeSelector: 
+        qfusion/master: "true"
+      tolerations: 
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: prometheus-storage
+        namespace: dts
+      spec:
+        storageClassName: csi-localpv
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 200Gi
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: alertmanager-storage
+        namespace: dts
+      spec:
+        storageClassName: csi-localpv
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Mi

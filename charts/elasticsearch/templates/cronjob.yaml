@@ -1,0 +1,45 @@
+{{- if .Values.cleaner.enabled -}}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{include "elasticsearch.name" .}}-cleaner
+spec:
+  schedule: "30 23 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+         {{- with .Values.nodeSelector }}
+          nodeSelector: {{ toYaml . | nindent 12 }}
+         {{- end }}
+         {{- with .Values.tolerations }}
+          tolerations: {{ toYaml . | nindent 12 }}
+         {{- end }}
+         {{- with .Values.affinity }}
+          affinity: {{ toYaml . | nindent 12 }}
+         {{end}}
+          containers:
+          - name: efk-cleaner
+            image: {{.Values.global.registry}}/{{.Values.global.repository}}/{{.Values.cleaner.image.name}}:{{.Values.cleaner.image.tag}}
+            imagePullPolicy: {{.Values.cleaner.image.pullPolicy}}
+            volumeMounts:
+            - name: config
+              mountPath: /etc/config.yaml
+              subPath: config.yaml
+            - name: localtime
+              mountPath: /etc/localtime
+          volumes:
+          - name: config
+            configMap:
+              items:
+              - key: config.yaml
+                path: config.yaml
+              name: {{include "elasticsearch.name" .}}-cleaner-config
+          - name: localtime
+            hostPath:
+              path: /etc/localtime
+          restartPolicy: OnFailure
+{{- end -}}

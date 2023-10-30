@@ -1,0 +1,87 @@
+# Default values for monitor.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+nodeExporter:
+  nodePort: true
+  phoenix: 32003
+  prometheus: 32005
+  alertmanager: 32006
+
+conf:
+  image:
+    registry: k8smaster.qfusion.irds
+    repository: irds
+    name: dbmotion-monitor-conf
+    tag: latest
+
+database:
+  address: qfusion-cmdb0.qfusion
+  port: 3306
+  secret: qfusion-cmdb0-root-suffix
+  name: dts_phoenix
+
+phoenix:
+  image:
+    registry: k8smaster.qfusion.irds
+    repository: irds
+    name: phoenix
+    pullPolicy: Always
+    tag: v1.4.1-dbmotion
+  args:
+    endpoint:
+      receiver: http://webserver-cluster.qfusion/api/v1/phoenix/alerting_receivers
+      target: http://dts-api-server.qfusion:3000/api/motion/v2/alert/phoenix/targets
+    alert:
+      hook: http://dts-api-server.qfusion:3000/api/motion/v2/alert/notice
+
+prometheus:
+  image:
+    registry: k8smaster.qfusion.irds
+    repository: irds
+    name: prometheus
+    pullPolicy: IfNotPresent
+    tag: v2.43.1
+  storage:
+    retentionTime: 10d
+    minBlockDuration: 2h
+    maxBlockDuration: 2h
+  pvcSize: 200Gi
+
+alertmanager:
+  image:
+    registry: k8smaster.qfusion.irds
+    repository: irds
+    name: alertmanager
+    pullPolicy: IfNotPresent
+    tag: v0.23.0
+
+resources: { }
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+nodeSelector:
+  qfusion/master: "true"
+
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+    operator: Exists
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: phoenix
+        topologyKey: kubernetes.io/hostname

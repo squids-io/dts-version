@@ -1,0 +1,90 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus-headless
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: monitor
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: monitor
+  ports:
+    - name: web
+      protocol: TCP
+      port: 9090
+      targetPort: web
+    - name: grpc
+      port: 10901
+      targetPort: grpc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    name: prometheus
+    kubernetes.io/cluster-service: 'true'
+spec:
+  ports:
+    - name: prometheus
+      {{- if and .Values.nodeExporter.nodePort .Values.nodeExporter.prometheus }}
+      nodePort: {{ $.Values.nodeExporter.prometheus }}
+      {{- end }}
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  {{- with .Values.nodeExporter.nodePort }}
+  type: NodePort
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenix
+  labels:
+    name: phoenix
+    kubernetes.io/cluster-service: 'true'
+spec:
+  ports:
+    - name: phoenix
+      {{- if and .Values.nodeExporter.nodePort .Values.nodeExporter.phoenix }}
+      nodePort: {{ $.Values.nodeExporter.phoenix }}
+      {{- end }}
+      port: 9091
+      protocol: TCP
+      targetPort: 9091
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+    {{- with .Values.nodeExporter.nodePort }}
+  type: NodePort
+    {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: alertmanager
+    kubernetes.io/cluster-service: 'true'
+  name: alertmanager
+spec:
+  ports:
+    - name: alertmanager
+      {{- if and .Values.nodeExporter.nodePort .Values.nodeExporter.alertmanager }}
+      nodePort: {{ $.Values.nodeExporter.alertmanager }}
+      {{- end }}
+      port: 9093
+      protocol: TCP
+      targetPort: 9093
+  selector:
+    app.kubernetes.io/name: monitor
+  sessionAffinity: None
+  {{- with .Values.nodeExporter.nodePort }}
+  type: NodePort
+  {{- end }}
+

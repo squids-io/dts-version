@@ -1,0 +1,97 @@
+# 同步状态(是否同步成功)
+- name: task-status
+  aliasName: task-status
+  labels:
+    alertingTypeName: DBMotion
+  supportedTargetTypes:
+    - DBMotion
+  description: 迁移同步任务状态报错时，告警
+  spec:
+    unitOptional: false
+    rules:
+      - name: 同步失败
+        expr: dts_task_status
+        advanced:
+          last: 1
+          status: false
+        description: 迁移同步任务状态报错时，告警
+        time:
+          status: true
+          groupInterval: 5
+          repeatInterval: 240
+        match:
+          labelName: ""
+          values: [ ]
+          prompt: ""
+          desc: ""
+          status: false
+          op: ""
+        warn:
+          errorcode: sync-state-warning
+          message: dts task {{ $labels.task_id }} from {{ $labels.source_db }} to {{ $labels.target_db }} migrate failed.
+          suggest: check task status.
+          operator: '=='
+          value: 3
+          status: true
+        critical:
+          errorcode: sync-state-critical
+          message: dts task {{ $labels.task_id }} from {{ $labels.source_db }} to {{ $labels.target_db }} migrate failed.
+          suggest: check task status.
+          operator: '=='
+          value: 3
+          status: true
+        severity:
+          value: critical
+          status: true
+        unit:
+          desc: ""
+          value: ""
+
+# 复制延迟
+- name: binlog-delay
+  aliasName: binlog-delay
+  labels:
+    alertingTypeName: DBMotion
+  supportedTargetTypes:
+    - DBMotion
+  description: 复制延迟超过warning阈值时，提醒有复制延迟；超过error阈值时，严重警告。单位：秒
+  spec:
+    unitOptional: false
+    rules:
+      - name: 复制延迟
+        expr: dts_binlog_delay{event_type="write"}
+        advanced:
+          last: 1
+          status: false
+        description: 复制延迟超过warning阈值时，提醒有复制延迟；超过error阈值时，严重警告。单位：秒
+        time:
+          status: true
+          groupInterval: 5
+          repeatInterval: 240
+        match:
+          labelName: ""
+          values: [ ]
+          prompt: ""
+          desc: ""
+          status: false
+          op: ""
+        warn:
+          errorcode: binlog-delay-warning
+          message: dts task {{ $labels.task_id }} binlog delay {{ $value }} is above warning threshold.
+          suggest: check binlog delay
+          operator: '>='
+          value: 60
+          status: true
+        critical:
+          errorcode: binlog-delay-critical
+          message: dts task {{ $labels.task_id }} binlog delay {{ $value }} is above critical threshold.
+          suggest: check binlog delay
+          operator: '>='
+          value: 600
+          status: true
+        severity:
+          value: ""
+          status: false
+        unit:
+          desc: "second"
+          value: second

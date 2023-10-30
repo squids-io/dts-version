@@ -1,0 +1,40 @@
+# Default values for cloud.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+# register repo
+image:
+  registry: k8smaster.qfusion.irds
+  repository: irds
+  dataDir: /opt/qfusion
+  name: dbmotion-ui
+  tag: hcs-dev
+  pullPolicy: Always
+
+# 亲和性
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - dts-ui
+        topologyKey: "kubernetes.io/hostname"
+
+
+# 节点选择器
+nodeSelector: { }
+
+# 在Pod上设置容忍 (Toleration)，意思是设置了容忍的Pod将可以容忍污点的存在，可以被调度到存在污点的Node上
+tolerations:
+  - effect: NoExecute
+    key: qfusion/master
+    operator: Exists
+  - effect: NoExecute
+    key: node-role.kubernetes.io/master
+    operator: Exists
+    tolerationSeconds: 60

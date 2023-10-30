@@ -1,0 +1,39 @@
+global:
+  registry: k8smaster.qfusion.irds
+  repository: irds
+  imageName: grafana
+
+image:
+  pullPolicy: IfNotPresent
+  tag: hcs-v9.2.8
+
+monitorPort: 9090
+replicasCount: 1
+adminPassword: admin
+
+enableHttps: false
+
+nodeSelector: {}
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+    operator: Exists
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          topologyKey: "kubernetes.io/hostname"
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - dts-grafana
+
+resources: {}
+
+loki:
+  enabled: false
+  port: 3100

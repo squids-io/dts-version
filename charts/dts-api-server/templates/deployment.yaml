@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dts-api-server
+  namespace: {{.Release.Namespace}}
+spec:
+  progressDeadlineSeconds: 600
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dts-api-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      name: dts-api-server
+      labels:
+        app.kubernetes.io/name: dts-api-server
+        qfusion/useIstio: "true"
+    spec:
+      serviceAccountName: dboperator
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.api.affinity }}
+      affinity: {{toYaml .| nindent 8}}
+      {{end}}
+      {{- with .Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api
+          image: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.image.name }}:{{ .Values.api.image.tag }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          securityContext:
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          env:
+            - name: DBMOTION_IMAGE
+              value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.image.name }}:{{ .Values.api.image.tag }}
+            - name: KAFKA_IMAGE
+              value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.kafkaImage.name }}:{{ .Values.api.kafkaImage.tag }}
+            - name: DBMOTION_WEB_ADDR
+              value: {{ .Values.dbmotion.webAddr }}
+            - name: DBMOTION_PUB_IP
+              value: {{ .Values.dbmotion.public.ip }}
+            - name: DBMOTION_GORM_DEBUG
+              value: "yes"
+            - name: SERVER_MODE
+              value: "PROXY"
+            - name: K8S_NAMESPACE
+              value: "qfusion"
+            - name: NODE_SELECTOR_KEY
+              value: "qfusion/node"
+            - name: NODE_SELECTOR_VALUE
+              value: ""
+            - name: MASTER_TOLERATION
+              value: "y"
+            - name: MYSQL_HOST
+              value: {{  .Values.cmdbAddr }}
+            - name: MYSQL_PORT
+              value: "{{  .Values.cmdbPort }}"
+            - name: MYSQL_USER_NAME
+              value: {{  .Values.cmdbUsername }}
+            - name: MYSQL_PASSWORD
+              value: {{  .Values.cmdbPassword }}
+            - name: CPU_REQUEST
+              value: 100m
+            - name: CPU_LIMIT
+              value: "4"
+            - name: MEMORY_REQUEST
+              value: 100Mi
+            - name: MEMORY_LIMIT
+              value: 8Gi
+            - name: ELASTICSEARCH_URI
+              value: {{ .Values.es.url }}
+            - name: PHOENIX_ENDPOINT
+              value: {{ .Values.phoenix.endpoint }}
+            - name: ELASTICSEARCH_IDX
+              value: "qfrds-dbmotion.log*"
+            - name: SAAS_MODE
+              value: "HCS"
+            - name: CMDB_URI
+              value: {{  .Values.cmdbUri }}
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+            - name: dts-proxy-files
+              mountPath: /client_files
+            - name: log-volume
+              mountPath: /dbmotion/log
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+            - name: grpc
+              containerPort: 3001
+              protocol: TCP
+      volumes:
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: log-volume
+          emptyDir: { }
+        - name: dts-proxy-files
+          emptyDir: { }

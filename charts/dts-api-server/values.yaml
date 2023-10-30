@@ -1,0 +1,90 @@
+# Default values for cloud.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+configNamespace: ""
+operatorNamespace: ""
+licenseServer: ""
+nameOverride: ""
+
+replicaCount: 1
+
+# register repo
+global:
+  registry: k8smaster.qfusion.irds
+  repository: irds
+
+platInfo: ""
+
+storageClassName: csi-localpv
+
+# elasticsearch
+elasticSearchAddr: elasticsearch-logging.dts
+elasticSearchPort: 9200
+
+# cmdb
+cmdbAddr: "qfusion-cmdb0"
+cmdbPort: "3306"
+cmdbUsername: "root"
+cmdbPassword: "letsg0"
+cmdbUri: "root:letsg0@qfusion-cmdb0:3306/webserver"
+
+es:
+  url: http://elasticsearch-logging.dts:9200
+phoenix:
+  endpoint: http://phoenix.dts:9091/phoenix/api/v2/
+
+# backend elb ip
+dbmotion:
+  public:
+    ip: 127.0.0.1
+  webAddr: http://dts-api-server.qfusion:3000
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: { }
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "dboperator"
+
+
+# 节点选择器
+nodeSelector: { }
+
+# 亲和性
+affinity: { }
+
+# 在Pod上设置容忍 (Toleration)，意思是设置了容忍的Pod将可以容忍污点的存在，可以被调度到存在污点的Node上
+tolerations:
+  - effect: NoExecute
+    key: qfusion/master
+    operator: Exists
+  - effect: NoExecute
+    key: node-role.kubernetes.io/master
+    operator: Exists
+    tolerationSeconds: 60
+
+api:
+  replicaCount: 1
+  image:
+    name: dbmotion
+    tag: "hcs-dev"
+    pullPolicy: Always
+  kafkaImage:
+    name: kafka
+    tag: "3.5.1"
+    pullPolicy: Always
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - dts-api-server
+          topologyKey: "kubernetes.io/hostname"
+
+

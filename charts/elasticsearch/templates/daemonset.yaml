@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ template "elasticsearch.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "elasticsearch.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "elasticsearch.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{end}}
+      initContainers: # will always initialize before other containers
+        - name: init-sysctl
+          image: {{template "elasticsearch.initImage" . }}
+          imagePullPolicy: {{ .Values.init.image.pullPolicy }}
+          command: ["/bin/sh","-c"," sysctl -w vm.max_map_count=262144 && chown -R 1000 /usr/share/elasticsearch/data"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: storage
+      containers:  # specification of normal containers
+        - name: es
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          image: {{ template "elasticsearch.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.resources }}
+          resources: {{ toYaml . | nindent 12 }}
+          {{- end}}
+          env:
+            - name: "CLUSTER_NAME"
+              value: "myescluster"
+            - name: "DISCOVERY_SERVICE"
+              value: "{{template "elasticsearch.name" . }}-discovery"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: "NODE_MASTER"
+              value: "true"
+            - name: "NODE_DATA"
+              value: "true"
+            - name: "NUMBER_OF_MASTER"
+              value: {{ .Values.masterNumber | quote }}
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.javaOpts }}
+          ports:
+            - containerPort: 9200
+              name: db
+              protocol: TCP
+            - containerPort: 9300
+              name: transport
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl --fail 127.0.0.1:9200/_cluster/health && curl --fail 127.0.0.1:9200/.qf-ack-index-3.13.10
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: storage
+            - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              name: config
+              subPath: elasticsearch.yml
+      volumes:
+        - name: storage
+          hostPath:
+            path: {{ if .Values.dataPath }}{{ .Values.dataPath }}{{ else }}{{ .Values.global.dataDir }}/{{ template "elasticsearch.name" . }} {{ end }}
+            type: DirectoryOrCreate
+        - configMap:
+            defaultMode: 420
+            items:
+              - key: elasticsearch.yml
+                path: elasticsearch.yml
+            name: {{template "elasticsearch.name" . }}
+          name: config

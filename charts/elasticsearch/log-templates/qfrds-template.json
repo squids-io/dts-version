@@ -1,0 +1,70 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "index.max_result_window" : 50000,
+    "index.mapping.ignore_malformed": true
+  },
+  "mappings": {
+    "_doc": {
+      "dynamic_date_formats": ["strict_date_optional_time",  "yyyy/MM/dd HH:mm:ss Z||yyyy/MM/dd Z||yyyy-MM-dd'T'HH:mm:ss z||yyyy-mm-dd'T'HH:mm:ssZ"],
+      "dynamic_templates": [
+        {
+          "strings": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "norms": false,
+              "index": true
+            }
+          }
+        }
+      ],
+      "properties": {
+        "appName": {
+          "type": "keyword",
+          "norms": false,
+          "index": true
+        },
+        "podName": {
+          "type": "keyword",
+          "norms": false,
+          "index": true
+        },
+        "podNamespace": {
+          "type": "keyword",
+          "norms": false,
+          "index": true
+        },
+        "container": {
+          "type": "keyword",
+          "norms": false,
+          "index": true
+        },
+        "log": {
+          "type": "text",
+          "norms": false,
+          "index": true
+        },
+        "statement": {
+          "type": "text",
+          "norms": false,
+          "index": true
+        },
+        "sqltext": {
+          "type": "text",
+          "norms": false,
+          "index": true
+        },
+        "tag": {
+          "type": "keyword",
+          "index": true,
+          "norms": false
+        }
+      }
+    }
+  },
+  "index_patterns": [
+    "qfrds-*",
+    "kube-events*"
+  ]
+}

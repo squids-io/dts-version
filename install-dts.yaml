@@ -1,0 +1,380 @@
+---
+# Source: dts-api-server/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dboperator
+  namespace: qfusion
+---
+# Source: dts-api-server/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dts-api-server
+  namespace: qfusion
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: dts-api-server
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+    - name: grpc
+      port: 3001
+      targetPort: 3001
+---
+# Source: dts-api-server/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dts-api-server
+  namespace: qfusion
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dts-api-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      name: dts-api-server
+      labels:
+        app.kubernetes.io/name: dts-api-server
+        qfusion/useIstio: "true"
+    spec:
+      serviceAccountName: dboperator
+      terminationGracePeriodSeconds: 30
+      affinity: 
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - dts-api-server
+            topologyKey: kubernetes.io/hostname
+      
+      tolerations: 
+        - effect: NoExecute
+          key: qfusion/master
+          operator: Exists
+        - effect: NoExecute
+          key: node-role.kubernetes.io/master
+          operator: Exists
+          tolerationSeconds: 60
+      containers:
+        - name: api
+          image: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          env:
+            - name: DBMOTION_IMAGE
+              value: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+            - name: KAFKA_IMAGE
+              value: k8smaster.qfusion.irds/irds/kafka:3.5.1
+            - name: DBMOTION_WEB_ADDR
+              value: http://dts-api-server.qfusion:3000
+            - name: DBMOTION_PUB_IP
+              value: 127.0.0.1
+            - name: DBMOTION_GORM_DEBUG
+              value: "yes"
+            - name: SERVER_MODE
+              value: "PROXY"
+            - name: K8S_NAMESPACE
+              value: "qfusion"
+            - name: NODE_SELECTOR_KEY
+              value: "qfusion/node"
+            - name: NODE_SELECTOR_VALUE
+              value: ""
+            - name: MASTER_TOLERATION
+              value: "y"
+            - name: MYSQL_HOST
+              value: qfusion-cmdb0
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_USER_NAME
+              value: root
+            - name: MYSQL_PASSWORD
+              value: letsg0
+            - name: CPU_REQUEST
+              value: 100m
+            - name: CPU_LIMIT
+              value: "4"
+            - name: MEMORY_REQUEST
+              value: 100Mi
+            - name: MEMORY_LIMIT
+              value: 8Gi
+            - name: ELASTICSEARCH_URI
+              value: http://elasticsearch-logging.dts:9200
+            - name: PHOENIX_ENDPOINT
+              value: http://phoenix.dts:9091/phoenix/api/v2/
+            - name: ELASTICSEARCH_IDX
+              value: "qfrds-dbmotion.log*"
+            - name: SAAS_MODE
+              value: "HCS"
+            - name: CMDB_URI
+              value: root:letsg0@qfusion-cmdb0:3306/webserver
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+            - name: dts-proxy-files
+              mountPath: /client_files
+            - name: log-volume
+              mountPath: /dbmotion/log
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+            - name: grpc
+              containerPort: 3001
+              protocol: TCP
+      volumes:
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: log-volume
+          emptyDir: { }
+        - name: dts-proxy-files
+          emptyDir: { }
+---
+# Source: dts-ui/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+  namespace: qfusion
+data:
+  nginx.conf: |
+
+    #user nobody;
+    worker_processes 1;
+    # worker_processes  auto;
+
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        include mime.types;
+        default_type application/octet-stream;
+        underscores_in_headers on;
+
+        sendfile on;
+        #tcp_nopush on;
+
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        keepalive_timeout 70;
+
+        # ...... 413 ......
+        client_max_body_size 20m;
+        client_body_buffer_size 20m;
+
+        # ............... http ...........................
+        # ...... Upgrade ............... close........................ nginx ..................... Connection ...... ''
+        map $http_upgrade $connection_upgrade {
+            default upgrade;
+            '' close;
+        }
+
+        server {
+            listen 80;
+            # server_name localhost;
+
+            add_header 'Access-Control-Allow-Origin' "$http_origin";
+            add_header 'Access-Control-Allow-Credentials' "true";
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE' always;
+            add_header 'Access-Control-Allow-Headers' 'project-uid, x-project-id, x-tenant-id, x-real-ip, x-forwarded-ip, accept, content-type, host';
+
+            if ($request_method !~ ^(GET|POST|PUT|DELETE)$) {
+                return 405;
+            }
+
+            # if ($request_method = 'OPTIONS') {
+            #     add_header 'Access-Control-Allow-Origin' '*';
+            #     add_header 'Access-Control-Allow-Credentials' 'true';
+            #     add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+            #     add_header 'Access-Control-Allow-Headers' 'traceId,channel,callerId,version,type';
+            #     add_header 'Access-Control-Max-Age' 1728000;
+            #     add_header 'Content-Type' 'text/plain charset=UTF-8';
+            #     add_header 'Content-Length' 0;
+            #     return 204;
+            # }
+
+
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+                try_files $uri /index.html;
+
+                if ($request_filename ~* .*\.(?:htm|html|json|md)$) {
+                    add_header Cache-Control "private, no-store, no-cache, must-revalidate, proxy-revalidate";
+                }
+            }
+
+            location /dts/ {
+                alias /usr/share/nginx/html/;
+                index index.html;
+                try_files $uri /index.html;
+
+                if ($request_filename ~* .*\.(?:htm|html|json|md)$) {
+                    add_header Cache-Control "private, no-store, no-cache, must-revalidate, proxy-revalidate";
+                }
+            }
+
+            location ~* ^/dts/grafana/ {
+              root /client_files;
+              proxy_pass http://grafana.dts:3000;
+              proxy_set_header Authorization "";
+              proxy_set_header Host $http_host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection $connection_upgrade;
+              proxy_http_version 1.1;
+              proxy_connect_timeout 36000;
+              proxy_read_timeout 36000;
+              proxy_send_timeout 36000;
+              send_timeout 36000;
+            }
+
+            location ~* ^/api/motion/v2/client_files {
+                root /client_files;
+                proxy_pass http://dts-api-server:3000;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_http_version 1.1;
+                proxy_connect_timeout 36000;
+                proxy_read_timeout 36000;
+                proxy_send_timeout 36000;
+                send_timeout 36000;
+            }
+
+            location ~* ^/api/motion/v2/template_file {
+                root /template_files;
+                proxy_pass http://dts-api-server:3000;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_http_version 1.1;
+                proxy_connect_timeout 36000;
+                proxy_read_timeout 36000;
+                proxy_send_timeout 36000;
+                send_timeout 36000;
+            }
+
+
+            location ~* ^/api/motion {
+                # rewrite ^/api/v1/(.*)$ /v1/$1 break;
+                proxy_pass http://dts-api-server:3000;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_http_version 1.1;
+                proxy_connect_timeout 36000;
+                proxy_read_timeout 36000;
+                proxy_send_timeout 36000;
+                send_timeout 36000;
+            }
+
+            error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+                root html;
+            }
+        }
+    }
+---
+# Source: dts-ui/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dts-ui
+  namespace: qfusion
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: dts-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30000
+---
+# Source: dts-ui/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dts-ui
+  namespace: qfusion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dts-ui
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dts-ui
+        qfusion/useIstio: "true"
+    spec:
+      affinity: 
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - dts-ui
+            topologyKey: kubernetes.io/hostname
+      
+      containers:
+        - name: ui
+          image: k8smaster.qfusion.irds/irds/dbmotion-ui:hcs-dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+            - name: web-nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai
+            type: ""
+        - name: web-nginx-conf
+          configMap:
+            name: nginx-conf

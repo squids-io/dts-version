@@ -1,0 +1,198 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: monitor
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: monitor
+spec:
+  serviceName: prometheus-headless
+  podManagementPolicy: Parallel
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: monitor
+  template:
+    metadata:
+      name: monitor
+      labels:
+        app.kubernetes.io/name: monitor
+        qfusion/useIstio: "true"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: dts-monitor-conf
+          image: {{.Values.conf.image.registry}}/{{.Values.conf.image.repository}}/{{.Values.conf.image.name}}:{{ .Values.conf.image.tag }}
+          command:
+            - sh
+            - -c
+            - cp -r /phoenix-conf/* /phoenix && cp -r /monitor-conf/* /monitor && cp -r /alert-tmpl/* /alert
+          volumeMounts:
+            - name: phoenix-conf
+              mountPath: /phoenix
+            - name: monitor-conf
+              mountPath: /monitor
+            - name: tmpl-volume
+              mountPath: /alert
+      containers:
+        - name: phoenix
+          image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
+          imagePullPolicy: {{ .Values.phoenix.image.pullPolicy }}
+          args:
+            - "--database-address={{ .Values.database.address }}"
+            - "--database-port={{ .Values.database.port }}"
+            - "--database-username=root"
+            - "--database-password=letsg0"
+            - "--database-database={{ .Values.database.name }}"
+            - "--data-dir=/etc/phoenix/monitor"
+            - "--rule-config=/rules.yml"
+            - "--prom-url=http://prometheus:9090"
+            - "--alert-url=http://alertmanager:9093"
+            - "--tmpl-dir=/etc/alert/tmpl"
+            - "--alerting-target-type-file-path=/etc/phoenix/conf/target_type.yml"
+            - "--alerting-type-file-path=/etc/phoenix/conf/alerting_type.yml"
+            - "--alerting-model-file-paths=/etc/phoenix/conf/dbmotion_model.yml"
+            - "--default-templates-file-path=/etc/phoenix/conf/templates.yml"
+            - "--notify-base-url=http://phoenix:9091"
+            - "--http-receivers-discovery-endpoint={{.Values.phoenix.args.endpoint.receiver}}"
+            - "--http-targets-discovery-endpoints={{.Values.phoenix.args.endpoint.target}}"
+            - "--alert-hook={{.Values.phoenix.args.alert.hook}}"
+            - "--http-discovery-interval=60"
+            - "--enable-multi-tenant=false"
+            - "--tailor-port=15100"
+          ports:
+            - containerPort: 9091
+              protocol: TCP
+              name: phoenix
+          volumeMounts:
+            - name: phoenix-conf
+              mountPath: /etc/phoenix/conf
+            - name: tmpl-volume
+              mountPath: /etc/alert/tmpl
+            - name: monitor-conf
+              mountPath: /etc/phoenix/monitor
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+        - name: prometheus
+          image: {{.Values.prometheus.image.registry}}/{{.Values.prometheus.image.repository}}/{{.Values.prometheus.image.name}}:{{ .Values.prometheus.image.tag }}
+          imagePullPolicy: {{ .Values.prometheus.image.pullPolicy }}
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --web.enable-lifecycle
+            - --storage.tsdb.retention=180d
+            - --storage.tsdb.path=/prometheus/data
+            - --storage.tsdb.retention.time={{ .Values.prometheus.storage.retentionTime }}
+            - --web.route-prefix=/
+            - --storage.tsdb.no-lockfile
+            - --storage.tsdb.min-block-duration={{ .Values.prometheus.storage.minBlockDuration }}
+            - --storage.tsdb.max-block-duration={{ .Values.prometheus.storage.maxBlockDuration }}
+            - --log.level=debug
+          ports:
+            - name: web
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /-/healthy
+              port: web
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 120
+            httpGet:
+              path: /-/ready
+              port: web
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: monitor-conf
+              mountPath: /etc/prometheus
+            - name: prometheus-storage
+              mountPath: /prometheus/data
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+        - name: alertmanager
+          image: {{.Values.alertmanager.image.registry}}/{{.Values.alertmanager.image.repository}}/{{.Values.alertmanager.image.name}}:{{ .Values.alertmanager.image.tag }}
+          imagePullPolicy: {{ .Values.alertmanager.image.pullPolicy }}
+          args:
+            - --storage.path=/alertmanager/data
+            - --cluster.advertise-address=0.0.0.0:9093
+            - --config.file=/etc/alertmanager/alertmanager.yml
+          ports:
+            - containerPort: 9093
+              protocol: TCP
+              name: alertmanager
+          volumeMounts:
+            - name: monitor-conf
+              mountPath: /etc/alertmanager
+            - name: tmpl-volume
+              mountPath: /etc/alert/tmpl
+            - name: alertmanager-storage
+              mountPath: /alertmanager/data
+            - name: timezone
+              mountPath: /etc/timezone
+            - name: localtime
+              mountPath: /etc/localtime
+      volumes:
+        - name: phoenix-conf
+          emptyDir: { }
+        - name: monitor-conf
+          emptyDir: { }
+        - name: tmpl-volume
+          emptyDir: { }
+        - name: my-cnf
+          configMap:
+            name: mysql-conf
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+      {{- with .Values.affinity }}
+      affinity: {{toYaml .| nindent 8}}
+      {{ end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: prometheus-storage
+        namespace: {{.Release.Namespace}}
+      spec:
+        storageClassName: csi-localpv
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.pvcSize }}
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: alertmanager-storage
+        namespace: {{.Release.Namespace}}
+      spec:
+        storageClassName: csi-localpv
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Mi

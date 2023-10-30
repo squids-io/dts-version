@@ -1,0 +1,328 @@
+---
+# Source: elasticsearch/templates/serviceaccount.yaml
+# RBAC authn and authz
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elasticsearch-logging
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: elasticsearch/templates/configmap.yaml
+apiVersion: v1
+data:
+  elasticsearch.yml: |
+    cluster:
+      name:  ${CLUSTER_NAME:escluster}
+    thread_pool:
+      write:
+        size: 6
+    node:
+      master: ${NODE_MASTER}    # true of false
+      data: ${NODE_DATA}    # true of false
+      name: ${NODE_NAME}
+      ingest: true
+      max_local_storage_nodes: 1
+    processors: 5
+    network.host: 0.0.0.0
+    path:
+      data: /usr/share/elasticsearch/data
+      logs: /usr/share/elasticsearch/log
+    bootstrap:
+      memory_lock: false
+      system_call_filter: false
+    http:
+      enabled: true
+      compression: true
+    discovery:
+      zen:
+        ping.unicast.hosts: elasticsearch-discovery
+        minimum_master_nodes: ${NUMBER_OF_MASTER}
+    xpack.ml.enabled: false
+kind: ConfigMap
+metadata:
+  name: elasticsearch
+---
+# Source: elasticsearch/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-cleaner-config
+data:
+  config.yaml: |
+    defaultExpire: 30
+    expires:
+      auditlog: 7
+---
+# Source: elasticsearch/templates/serviceaccount.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elasticsearch-logging-dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "services"
+      - "namespaces"
+      - "endpoints"
+    verbs:
+      - "get"
+---
+# Source: elasticsearch/templates/serviceaccount.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elasticsearch-logging-dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+    k8s-app: elasticsearch-logging
+subjects:
+- kind: ServiceAccount
+  name: elasticsearch-logging
+  namespace: dts
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: elasticsearch-logging-dts
+  apiGroup: ""
+---
+# Source: elasticsearch/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-discovery
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+  ports:
+    - name: transport
+      port: 9300
+      protocol: TCP
+    - name: db
+      port: 9200
+      protocol: TCP
+  clusterIP: None
+---
+# Source: elasticsearch/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: 
+    elasticsearch-logging
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  ports:
+    - port: 9200
+      protocol: TCP
+      targetPort: db
+  selector:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+---
+# Source: elasticsearch/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: elasticsearch
+  namespace: dts
+  labels:
+    helm.sh/chart: elasticsearch-0.1.0
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: elasticsearch
+    app.kubernetes.io/version: "6.8.7"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch
+      app.kubernetes.io/instance: elasticsearch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/instance: elasticsearch
+    spec:
+      nodeSelector: 
+        qfusion/master: "true"
+      tolerations: 
+        - effect: NoSchedule
+          key: qfusion/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+      initContainers: # will always initialize before other containers
+        - name: init-sysctl
+          image: k8smaster.qfusion.irds/irds/alpine:3.6
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c"," sysctl -w vm.max_map_count=262144 && chown -R 1000 /usr/share/elasticsearch/data"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: storage
+      containers:  # specification of normal containers
+        - name: es
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.23
+          imagePullPolicy: Always
+          env:
+            - name: "CLUSTER_NAME"
+              value: "myescluster"
+            - name: "DISCOVERY_SERVICE"
+              value: "elasticsearch-discovery"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: "NODE_MASTER"
+              value: "true"
+            - name: "NODE_DATA"
+              value: "true"
+            - name: "NUMBER_OF_MASTER"
+              value: "2"
+            - name: ES_JAVA_OPTS
+              value: -Xms2g -Xmx2g
+          ports:
+            - containerPort: 9200
+              name: db
+              protocol: TCP
+            - containerPort: 9300
+              name: transport
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl --fail 127.0.0.1:9200/_cluster/health && curl --fail 127.0.0.1:9200/.qf-ack-index-3.13.10
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: storage
+            - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              name: config
+              subPath: elasticsearch.yml
+      volumes:
+        - name: storage
+          hostPath:
+            path: /opt/dts/elasticsearch 
+            type: DirectoryOrCreate
+        - configMap:
+            defaultMode: 420
+            items:
+              - key: elasticsearch.yml
+                path: elasticsearch.yml
+            name: elasticsearch
+          name: config
+---
+# Source: elasticsearch/templates/job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elasticsearch-config-job-v3.13.11
+  namespace: dts
+spec:
+  template:
+    spec:
+      nodeSelector: 
+            qfusion/master: "true"
+      serviceAccountName: elasticsearch-logging
+      containers:
+        - name: runner
+          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.1"
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/bash",  "/config-es.sh" ]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ES_PORT
+              value: "9200"
+            - name: SERVICE_NAME
+              value: elasticsearch-discovery
+            - name: MAX_RESULT_WINDOW
+              value: "50000"
+      restartPolicy: OnFailure
+  backoffLimit: 5
+---
+# Source: elasticsearch/templates/cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: elasticsearch-cleaner
+spec:
+  schedule: "30 23 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          nodeSelector: 
+            qfusion/master: "true"
+          tolerations: 
+            - effect: NoSchedule
+              key: qfusion/master
+              operator: Exists
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/master
+              operator: Exists
+          containers:
+          - name: efk-cleaner
+            image: k8smaster.qfusion.irds/irds/efk-cleaner:1.0
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+            - name: config
+              mountPath: /etc/config.yaml
+              subPath: config.yaml
+            - name: localtime
+              mountPath: /etc/localtime
+          volumes:
+          - name: config
+            configMap:
+              items:
+              - key: config.yaml
+                path: config.yaml
+              name: elasticsearch-cleaner-config
+          - name: localtime
+            hostPath:
+              path: /etc/localtime
+          restartPolicy: OnFailure
