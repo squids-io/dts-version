@@ -116,7 +116,7 @@
           "refId": "A"
         }
       ],
-      "title": "Write Delay",
+      "title": "Write Delay(RTO)",
       "type": "timeseries"
     },
     {
@@ -208,7 +208,7 @@
           "refId": "A"
         }
       ],
-      "title": "Read Delay",
+      "title": "Read Delay(RPO)",
       "type": "timeseries"
     },
     {

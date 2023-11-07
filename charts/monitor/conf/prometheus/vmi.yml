@@ -1,7 +1,0 @@
-groups:
-  - name: vmi
-    rules:
-      - record: qfrds_container_spec_memory_limit_bytes
-        expr: vmi_container_spec_memory_limit_bytes + on(container, namespace, pod, node) group_left container_spec_memory_limit_bytes or container_spec_memory_limit_bytes
-      - record: qfrds_container_spec_memory_swap_limit_bytes
-        expr: vmi_container_spec_memory_swap_limit_bytes + on(container, namespace, pod, node) group_left container_spec_memory_swap_limit_bytes or container_spec_memory_swap_limit_bytes

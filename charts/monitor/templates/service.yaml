@@ -1,7 +1,7 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: prometheus-headless
+  name: monitor-headless
   namespace: {{.Release.Namespace}}
   labels:
     app.kubernetes.io/name: monitor
@@ -22,15 +22,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus
+  name: monitor
   labels:
-    name: prometheus
+    name: monitor
     kubernetes.io/cluster-service: 'true'
 spec:
   ports:
-    - name: prometheus
-      {{- if and .Values.nodeExporter.nodePort .Values.nodeExporter.prometheus }}
-      nodePort: {{ $.Values.nodeExporter.prometheus }}
+    - name: monitor
+      {{- if and .Values.nodeExporter.nodePort .Values.nodeExporter.monitor }}
+      nodePort: {{ $.Values.nodeExporter.monitor }}
       {{- end }}
       port: 9090
       protocol: TCP

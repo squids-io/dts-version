@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: monitor
 spec:
-  serviceName: prometheus-headless
+  serviceName: monitor-headless
   podManagementPolicy: Parallel
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -19,7 +19,7 @@ spec:
         app.kubernetes.io/name: monitor
         qfusion/useIstio: "true"
     spec:
-      serviceAccountName: prometheus
+      serviceAccountName: monitor
       securityContext:
         runAsUser: 0
         fsGroup: 0
@@ -30,14 +30,14 @@ spec:
           command:
             - sh
             - -c
-            - cp -r /phoenix-conf/* /phoenix && cp -r /monitor-conf/* /monitor && cp -r /alert-tmpl/* /alert
+            - |
+              cd /dts-monitor
+              cp * /dts-conf/
           volumeMounts:
-            - name: phoenix-conf
-              mountPath: /phoenix
             - name: monitor-conf
-              mountPath: /monitor
-            - name: tmpl-volume
-              mountPath: /alert
+              mountPath: /dts-monitor
+            - name: shared-conf
+              mountPath: /dts-conf
       containers:
         - name: phoenix
           image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
@@ -48,15 +48,15 @@ spec:
             - "--database-username=root"
             - "--database-password=letsg0"
             - "--database-database={{ .Values.database.name }}"
-            - "--data-dir=/etc/phoenix/monitor"
+            - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
             - "--prom-url=http://prometheus:9090"
             - "--alert-url=http://alertmanager:9093"
             - "--tmpl-dir=/etc/alert/tmpl"
-            - "--alerting-target-type-file-path=/etc/phoenix/conf/target_type.yml"
-            - "--alerting-type-file-path=/etc/phoenix/conf/alerting_type.yml"
-            - "--alerting-model-file-paths=/etc/phoenix/conf/dbmotion_model.yml"
-            - "--default-templates-file-path=/etc/phoenix/conf/templates.yml"
+            - "--alerting-target-type-file-path=/etc/phoenix/conf/alerting-target-type.yml"
+            - "--alerting-type-file-path=/etc/phoenix/conf/alerting-type.yml"
+            - "--alerting-model-file-paths=/etc/phoenix/conf/alerting-model.yml"
+            - "--default-templates-file-path=/etc/phoenix/conf/alerting-templates.yml"
             - "--notify-base-url=http://phoenix:9091"
             - "--http-receivers-discovery-endpoint={{.Values.phoenix.args.endpoint.receiver}}"
             - "--http-targets-discovery-endpoints={{.Values.phoenix.args.endpoint.target}}"
@@ -75,6 +75,10 @@ spec:
               mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/phoenix/monitor
+            - name: data
+              mountPath: /monitor/data
+            - name: shared-conf
+              mountPath: /dts-conf
             - name: timezone
               mountPath: /etc/timezone
             - name: localtime
@@ -118,8 +122,10 @@ spec:
           volumeMounts:
             - name: monitor-conf
               mountPath: /etc/prometheus
-            - name: prometheus-storage
+            - name: data
               mountPath: /prometheus/data
+            - name: shared-conf
+              mountPath: /dts-conf
             - name: timezone
               mountPath: /etc/timezone
             - name: localtime
@@ -136,26 +142,32 @@ spec:
               protocol: TCP
               name: alertmanager
           volumeMounts:
+            - name: alertmanager-tmpl
+              mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/alertmanager
-            - name: tmpl-volume
-              mountPath: /etc/alert/tmpl
-            - name: alertmanager-storage
+            - name: data
               mountPath: /alertmanager/data
+            - name: shared-conf
+              mountPath: /dts-conf
             - name: timezone
               mountPath: /etc/timezone
             - name: localtime
               mountPath: /etc/localtime
       volumes:
         - name: phoenix-conf
-          emptyDir: { }
+          configMap:
+            name: phoenix-conf
         - name: monitor-conf
+          configMap:
+            name: monitor-conf
+        - name: alertmanager-tmpl
+          configMap:
+            name: alertmanager-tmpl
+        - name: shared-conf
           emptyDir: { }
         - name: tmpl-volume
           emptyDir: { }
-        - name: my-cnf
-          configMap:
-            name: mysql-conf
         - name: timezone
           hostPath:
             path: /etc/timezone
@@ -175,7 +187,7 @@ spec:
     - apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: prometheus-storage
+        name: data
         namespace: {{.Release.Namespace}}
       spec:
         storageClassName: csi-localpv
@@ -184,15 +196,3 @@ spec:
         resources:
           requests:
             storage: {{ .Values.prometheus.pvcSize }}
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: alertmanager-storage
-        namespace: {{.Release.Namespace}}
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Mi

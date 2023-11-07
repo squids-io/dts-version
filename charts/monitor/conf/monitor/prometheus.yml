@@ -1,0 +1,44 @@
+# monitor 初始化配置
+# 全局配置， 通常可以被job单独的配置覆盖
+global:
+  # target 定时任务周期
+  scrape_interval: 1m
+  # 拉取指标超时
+  scrape_timeout: 50s
+  # 执行 rules 规则的时间
+  evaluation_interval: 1m
+  external_labels:
+    cluster: monitor-ha
+
+# 规则文件列表
+rule_files:
+  - /etc/monitor/rules.yml
+
+# 告警组件
+alerting:
+  alert_relabel_configs:
+    - source_labels: [ tid, exporter, ip ]
+      separator: ;
+      regex: (.*);(.*);(.*)
+      target_label: routing_key
+      replacement: ${1}__${2}__${3}
+      action: replace
+  # 告警配置文件
+  alertmanagers:
+    - api_version: v1
+      static_configs:
+        - targets: [ "alertmanager:9093" ]
+      timeout: 10s
+      path_prefix: /
+
+# 数据抓取配置
+scrape_configs:
+  - job_name: dts-exporter
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /api/motion/v2/metrics
+    scheme: http
+    static_configs:
+      - targets: [
+        'dts-api-server.dts:3000'
+      ]

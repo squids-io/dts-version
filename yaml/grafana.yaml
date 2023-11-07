@@ -1314,7 +1314,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Write Delay",
+          "title": "Write Delay(RTO)",
           "type": "timeseries"
         },
         {
@@ -1406,7 +1406,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Read Delay",
+          "title": "Read Delay(RPO)",
           "type": "timeseries"
         },
         {
@@ -2109,7 +2109,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: k8smaster.qfusion.irds/irds/grafana:hcs-v9.2.8
+          image: k8smaster.qfusion.irds/irds/grafana:v10.1.1
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0

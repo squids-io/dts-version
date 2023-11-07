@@ -98,7 +98,7 @@ spec:
             - name: KAFKA_IMAGE
               value: k8smaster.qfusion.irds/irds/kafka:3.5.1
             - name: DBMOTION_WEB_ADDR
-              value: http://dts-api-server.qfusion:3000
+              value: http://dts-api-server:3000
             - name: DBMOTION_PUB_IP
               value: 127.0.0.1
             - name: DBMOTION_GORM_DEBUG
@@ -132,7 +132,7 @@ spec:
             - name: ELASTICSEARCH_URI
               value: http://elasticsearch-logging.dts:9200
             - name: PHOENIX_ENDPOINT
-              value: http://phoenix.dts:9091/phoenix/api/v2/
+              value: http://phoenix.dts:9091/api/v2/phoenix
             - name: ELASTICSEARCH_IDX
               value: "qfrds-dbmotion.log*"
             - name: SAAS_MODE

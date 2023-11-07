@@ -14,12 +14,12 @@ conf:
   image:
     registry: k8smaster.qfusion.irds
     repository: irds
-    name: dbmotion-monitor-conf
-    tag: latest
+    name: alpine
+    tag: 3.6
 
 database:
-  address: qfusion-cmdb0.qfusion
-  port: 3306
+  address: "qfusion-cmdb0.qfusion"
+  port: "3306"
   secret: qfusion-cmdb0-root-suffix
   name: dts_phoenix
 
@@ -29,13 +29,13 @@ phoenix:
     repository: irds
     name: phoenix
     pullPolicy: Always
-    tag: v1.4.1-dbmotion
+    tag: hcs-dbmotion
   args:
     endpoint:
       receiver: http://webserver-cluster.qfusion/api/v1/phoenix/alerting_receivers
-      target: http://dts-api-server.qfusion:3000/api/motion/v2/alert/phoenix/targets
+      target: http://dts-api-server.dts:3000/api/motion/v2/alert/phoenix/targets
     alert:
-      hook: http://dts-api-server.qfusion:3000/api/motion/v2/alert/notice
+      hook: http://dts-api-server.dts:3000/api/motion/v2/alert/notice
 
 prometheus:
   image:

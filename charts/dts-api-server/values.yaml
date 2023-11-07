@@ -32,13 +32,13 @@ cmdbUri: "root:letsg0@qfusion-cmdb0.qfusion:3306/webserver"
 es:
   url: http://elasticsearch-logging.dts:9200
 phoenix:
-  endpoint: http://phoenix.dts:9091/phoenix/api/v2/
+  endpoint: http://phoenix.dts:9091/api/v2/phoenix
 
 # backend elb ip
 dbmotion:
   public:
     ip: 127.0.0.1
-  webAddr: http://dts-api-server.qfusion:3000
+  webAddr: http://dts-api-server:3000
 
 serviceAccount:
   # Specifies whether a service account should be created

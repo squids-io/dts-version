@@ -307,7 +307,7 @@ spec:
               operator: Exists
           containers:
           - name: efk-cleaner
-            image: k8smaster.qfusion.irds/irds/efk-cleaner:1.0
+            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.3.5
             imagePullPolicy: IfNotPresent
             volumeMounts:
             - name: config

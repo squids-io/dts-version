@@ -5,7 +5,7 @@ global:
 
 image:
   pullPolicy: IfNotPresent
-  tag: hcs-v9.2.8
+  tag: v10.1.1
 
 monitorPort: 9090
 replicasCount: 1

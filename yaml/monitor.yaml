@@ -3,13 +3,1024 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: prometheus
+  name: monitor
+---
+# Source: monitor/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-tmpl
+  namespace: dts
+data:
+  email.tmpl: |-
+    <!doctype html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width"/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <title>告警模板</title>
+        <style>
+            /* GLOBAL RESETS */
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #F8F8F8;
+                line-height: 20px;
+                -webkit-font-smoothing: antialiased;
+                font-family: sans-serif;
+                font-size: 13px;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+                color: #333
+            }
+    
+            img {
+                border: none;
+                -ms-interpolation-mode: bicubic;
+                max-width: 100%;
+                vertical-align: middle
+            }
+    
+            table {
+                width: 100%;
+                border-collapse: separate;
+                mso-table-lspace: 0;
+                mso-table-rspace: 0
+            }
+    
+            table td {
+                font-family: sans-serif;
+                font-size: 13px;
+                vertical-align: top
+            }
+    
+            h1, h2, h3, h4 {
+                margin: 0 0 30px;
+                line-height: 1.4;
+                color: #000;
+                font-family: sans-serif;
+                font-weight: 400
+            }
+    
+            h1 {
+                font-size: 35px;
+                font-weight: 300;
+                text-align: center;
+                text-transform: capitalize
+            }
+    
+            p, ul, ol {
+                margin: 0 0 15px;
+                font-family: sans-serif;
+                font-size: 13px;
+                font-weight: 400
+            }
+    
+            p li, ul li, ol li {
+                list-style-position: inside;
+                margin-left: 5px
+            }
+    
+            a {
+                color: #3498DB;
+                text-decoration: underline
+            }
+    
+            hr {
+                margin: 20px 0;
+                border: 0;
+                border-bottom: 1px solid #F8F8F8
+            }
+    
+            /* BODY & CONTAINER */
+            .body {
+                width: 100%;
+                background-color: #F8F8F8
+            }
+    
+            .container {
+                display: block;
+                width: auto !important;
+                width: 900px;
+                margin: 0 auto !important;
+                padding: 10px 0;
+                max-width: 900px;
+                box-sizing: border-box;
+            }
+    
+            .content {
+                display: block;
+                margin: 0 auto;
+                padding: 10px 0;
+                box-sizing: border-box;
+                max-width: 900px
+            }
+    
+            /* HEADER, FOOTER, MAIN */
+            .main {
+                width: 100%;
+                background: #FFF;
+                border-radius: 3px
+            }
+    
+            .wrapper {
+                padding: 15px 25px 40px 0;
+                box-sizing: border-box
+            }
+    
+            .footer {
+                clear: both;
+                width: 100%;
+                padding-top: 10px;
+                text-align: center
+            }
+    
+            .footer td, .footer p, .footer span, .footer a {
+                color: #999;
+                font-size: 12px;
+                text-align: center
+            }
+    
+            /* BUTTONS */
+            .btn {
+                width: 100%;
+                box-sizing: border-box
+            }
+    
+            .btn > tbody > tr > td {
+                padding-bottom: 15px
+            }
+    
+            .btn table {
+                width: auto
+            }
+    
+            .btn table td {
+                background-color: #FFF;
+                text-align: center;
+                border-radius: 5px
+            }
+    
+            .btn a {
+                display: inline-block;
+                margin: 0;
+                padding: 12px 25px;
+                border: solid 1px #3498DB;
+                background-color: #FFF;
+                color: #3498DB;
+                font-size: 13px;
+                font-weight: 700;
+                text-decoration: none;
+                cursor: pointer;
+                border-radius: 5px;
+                box-sizing: border-box;
+                text-transform: capitalize
+            }
+    
+            .btn-primary table td {
+                background-color: #3498DB
+            }
+    
+            .btn-primary a {
+                border-color: #3498DB;
+                background-color: #3498DB;
+                color: #FFF
+            }
+    
+            /* OTHER STYLES THAT MIGHT BE USEFUL */
+            .align-center {
+                text-align: center
+            }
+    
+            .align-right {
+                text-align: right
+            }
+    
+            .align-left {
+                text-align: left
+            }
+    
+            .clear {
+                clear: both
+            }
+    
+            .mt0 {
+                margin-top: 0
+            }
+    
+            .mb0 {
+                margin-bottom: 0
+            }
+    
+            .preheader {
+                display: none;
+                width: 0;
+                height: 0;
+                color: transparent;
+                max-height: 0;
+                max-width: 0;
+                opacity: 0;
+                overflow: hidden;
+                visibility: hidden
+            }
+    
+            .powered-by a {
+                text-decoration: none
+            }
+    
+            /* RESPONSIVE AND MOBILE FRIENDLY STYLES */
+            @media only screen and (max-width: 620px) {
+                table[class=body] h1 {
+                    margin-bottom: 10px !important;
+                    font-size: 28px !important
+                }
+    
+                table[class=body] p, table[class=body] ul, table[class=body] ol, table[class=body] td, table[class=body] span, table[class=body] a {
+                    font-size: 16px !important
+                }
+    
+                table[class=body] .wrapper, table[class=body] .article {
+                    padding: 10px !important
+                }
+    
+                table[class=body] .content {
+                    padding: 0 !important
+                }
+    
+                table[class=body] .container {
+                    width: 100% !important;
+                    padding: 0 !important
+                }
+    
+                table[class=body] .main {
+                    border-left-width: 0 !important;
+                    border-right-width: 0 !important;
+                    border-radius: 0 !important
+                }
+    
+                table[class=body] .btn table, table[class=body] .btn a {
+                    width: 100% !important
+                }
+    
+                table[class=body] .img-responsive {
+                    width: auto !important;
+                    height: auto !important;
+                    max-width: 100% !important
+                }
+            }
+    
+            /* PRESERVE THESE STYLES IN THE HEAD */
+            @media all {
+                .ExternalClass {
+                    width: 100%
+                }
+    
+                .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {
+                    line-height: 100%
+                }
+    
+                .apple-link a {
+                    line-height: inherit !important;
+                    color: inherit !important;
+                    font-family: inherit !important;
+                    font-size: inherit !important;
+                    font-weight: inherit !important;
+                    text-decoration: none !important
+                }
+    
+                .btn-primary table td:hover {
+                    background-color: #34495E !important
+                }
+    
+                .btn-primary a:hover {
+                    border-color: #34495E !important;
+                    background-color: #34495E !important
+                }
+            }
+    
+            /* common */
+            .alert {
+                padding: 16px 25px;
+                color: #FFF;
+                font-size: 16px;
+                font-weight: 500;
+                text-align: left
+            }
+    
+            .alert .text {
+                margin-left: 10px
+            }
+    
+            .alert.alert--bad {
+                background-color: #FD6969
+            }
+    
+            .alert.alert--resolved {
+                background-color: #28d280
+            }
+    
+            .greeting {
+                margin-bottom: 10px;
+                padding: 5px 0 5px 25px;
+            }
+    
+            .alert-item-title {
+                width: 100px;
+                padding: 8px 0 0 25px;
+            }
+    
+            .alert-item-context {
+                padding: 8px 20px;
+                background-color: #F8F8F8;
+                color: #666
+            }
+    
+            .alert-item-space {
+                height: 15px;
+                line-height: 1
+            }
+    
+            .alert-hr-top, .alert-hr-bottom {
+                height: 40px;
+            }
+    
+            .alert-hr-line {
+                line-height: 0
+            }
+    
+            .alert-hr-line p {
+                width: 100%;
+                height: 1px;
+                margin: 0;
+                padding: 0;
+                background-color: #EBEBEB;
+                overflow: hidden
+            }
+    
+            .level--warnning {
+    
+                color: #FF9F00
+            }
+    
+            .level--critical {
+                color: #FD6969
+            }
+    
+            .alert-hr {
+                padding-left: 25px;
+            }
+    
+            .alert-item-title--bad {
+                border-left: 3px solid #FD6969;
+            }
+    
+            .alert-item-title--resolved {
+                border-left: 3px solid #28D280;
+            }
+        </style>
+    </head>
+    <body class="">
+    <table border="0" cellpadding="0" cellspacing="0" class="body">
+        <tr>
+            <td>&nbsp;</td>
+            <td class="container">
+                <div class="content">
+                    <!--开始展示信息-->
+                    <!--如果存在firing 的告警项-->
+                    {{ if gt (len .Alerts.Firing) 0 }}
+                    <div class="header">
+                        <table border="0" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td class="content-block alert alert--bad">
+                                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTMyIDc5LjE1OTI4NCwgMjAxNi8wNC8xOS0xMzoxMzo0MCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTUuNSAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OTk4RTEyNUUyOEJFMTFFNzk5NzVDQUJBOTg4MTIzOEEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OTk4RTEyNUYyOEJFMTFFNzk5NzVDQUJBOTg4MTIzOEEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5OThFMTI1QzI4QkUxMUU3OTk3NUNBQkE5ODgxMjM4QSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5OThFMTI1RDI4QkUxMUU3OTk3NUNBQkE5ODgxMjM4QSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pmj/NgsAAADvSURBVHjaYvz//z8DNQETA5UB1Q1kAWJhIL4ExFJA/AWISQ0DRiDmAeJnQGzIAAxDUSAWAOLr/8kH14CYH4jFQAZ+AmIXUOQAcS8ZhvVA9boC8WcGJIliqEQgCYYFQvWUwARAnA9ICtZBxQSB+DYeg25D1YDUrkcS/wDzMjK4CcTCUMWrsRi2CioHUnMLTe4TNgNhwA+qMRtJLAsq5o9DD14DQaAFaoAnFDNAxf6TayAI7IcaxABl4wOfGMGmMjDwEki896EJWIGAus8sROYGRVLyMiMVszIj438ql18gL68EYk8qufQA48grYAECDADC/XEs27+V6gAAAABJRU5ErkJggg=="
+                                         width="20" height="20" alt="email"/><span class="text">告警通知</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    {{ end }}
+                    <!--逐一成列告警项(包含一项问候)-->
+                    <table class="main">
+                        <tr>
+                            <td class="wrapper">
+                                <table border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td>
+                                            {{ range $i, $alert := .Alerts.Firing }}
+                                            {{ if ne $i 0 }}
+                                            <table class="alert-hr" border="0" cellpadding="0" cellspacing="0">
+                                                <tbody>
+                                                <tr>
+                                                    <td class="alert-hr-top">&nbsp</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-hr-line">
+                                                        <p>&nbsp;</p>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-hr-bottom">&nbsp</td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                            {{ end }}
+                                            <table class="alert-item" border="0" cellpadding="0" cellspacing="0">
+                                                <tbody>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title alert-item-title--bad">告警项：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.alertingModelAliasName }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">告警描述：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Annotations.description }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">迁移任务：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.alertingTargetName}}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">源数据库：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.source_db }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">目标数据库：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.target_db }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">告警时间：</td>
+                                                                <td class="alert-item-context">{{ $alert.StartsAt.Local.Format "2006-01-02 15:04:05" }}</td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">告警级别：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ if eq $alert.Labels.severity "warn" }}
+                                                                    <span class="level level--warnning">警告</span>
+                                                                    {{ else }}
+                                                                    <span class="level level--critical">严重</span>
+                                                                    {{ end }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">告警信息：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Annotations.message }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                            {{ end }}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                    {{ if gt (len .Alerts.Resolved) 0 }}
+    
+    
+                    <!--告警项成列结束-->
+                    <!--如果存在resolved 的告警项-->
+                    <div class="header">
+                        <table border="0" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td class="content-block alert alert--resolved">
+                                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTMyIDc5LjE1OTI4NCwgMjAxNi8wNC8xOS0xMzoxMzo0MCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTUuNSAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OTk4RTEyNUUyOEJFMTFFNzk5NzVDQUJBOTg4MTIzOEEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OTk4RTEyNUYyOEJFMTFFNzk5NzVDQUJBOTg4MTIzOEEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5OThFMTI1QzI4QkUxMUU3OTk3NUNBQkE5ODgxMjM4QSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5OThFMTI1RDI4QkUxMUU3OTk3NUNBQkE5ODgxMjM4QSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pmj/NgsAAADvSURBVHjaYvz//z8DNQETA5UB1Q1kAWJhIL4ExFJA/AWISQ0DRiDmAeJnQGzIAAxDUSAWAOLr/8kH14CYH4jFQAZ+AmIXUOQAcS8ZhvVA9boC8WcGJIliqEQgCYYFQvWUwARAnA9ICtZBxQSB+DYeg25D1YDUrkcS/wDzMjK4CcTCUMWrsRi2CioHUnMLTe4TNgNhwA+qMRtJLAsq5o9DD14DQaAFaoAnFDNAxf6TayAI7IcaxABl4wOfGMGmMjDwEki896EJWIGAus8sROYGRVLyMiMVszIj438ql18gL68EYk8qufQA48grYAECDADC/XEs27+V6gAAAABJRU5ErkJggg=="
+                                         width="20" height="20" alt="email"/><span class="text">已解决告警</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <!--逐一成列告警项-->
+                    <table class="main">
+                        <tr>
+                            <td class="wrapper">
+                                <table border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td>
+    
+                                            {{ range $i, $alert := .Alerts.Resolved }}
+                                            {{ if ne $i 0}}
+                                            <table class="alert-hr" border="0" cellpadding="0" cellspacing="0">
+                                                <tbody>
+                                                <tr>
+                                                    <td class="alert-hr-top">&nbsp</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-hr-line">
+                                                        <p>&nbsp;</p>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-hr-bottom">&nbsp</td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                            {{ end }}
+                                            <table class="alert-item" border="0" cellpadding="0" cellspacing="0">
+                                                <tbody>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title alert-item-title--resolved">
+                                                                    告警项：
+                                                                </td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.alertingModelAliasName }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">告警描述：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Annotations.description }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">迁移任务：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.alertingTargetName }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">源数据库：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.source_db }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">目标数据库：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ $alert.Labels.target_db }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">开始时间：</td>
+                                                                <td class="alert-item-context">{{ $alert.StartsAt.Local.Format "2006-01-02 15:04:05" }}</td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">结束时间：</td>
+                                                                <td class="alert-item-context">{{ $alert.EndsAt.Local.Format "2006-01-02 15:04:05" }}</td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">告警级别：</td>
+                                                                <td class="alert-item-context">
+                                                                    {{ if eq $alert.Labels.severity "warn" }}
+                                                                    <span class="level level--warnning">警告</span>
+                                                                    {{ else }}
+                                                                    <span class="level level--critical">严重</span>
+                                                                    {{ end }}
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="left">
+                                                        <table class="alert-item-row" border="0" cellpadding="0"
+                                                               cellspacing="0">
+                                                            <tbody>
+                                                            <tr>
+                                                                <td class="alert-item-title">通知信息：</td>
+                                                                <td class="alert-item-context">
+                                                                    在过去5m内没有持续触发该告警，因此告警被判定为已解决。
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="alert-item-space">&nbsp;</td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                            {{ end }}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                    {{end}}
+                    <!--告警项成列结束-->
+                    <!--信息展示结束-->
+                </div>
+            </td>
+            <td>&nbsp;</td>
+        </tr>
+    </table>
+    
+    </body>
+    </html>
+---
+# Source: monitor/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phoenix-conf
+  namespace: dts
+data:
+  alerting-model.yml: |-
+    # 同步状态(是否同步成功)
+    - name: task-status
+      aliasName: task-status
+      labels:
+        alertingTypeName: DBMotion
+      supportedTargetTypes:
+        - DBMotion
+      description: 迁移同步任务状态报错时，告警
+      spec:
+        unitOptional: false
+        rules:
+          - name: 同步失败
+            expr: dts_task_status
+            advanced:
+              last: 1
+              status: false
+            description: 迁移同步任务状态报错时，告警
+            time:
+              status: true
+              groupInterval: 5
+              repeatInterval: 240
+            match:
+              labelName: ""
+              values: [ ]
+              prompt: ""
+              desc: ""
+              status: false
+              op: ""
+            warn:
+              errorcode: sync-state-warning
+              message: dts task {{ $labels.task_id }} from {{ $labels.source_db }} to {{ $labels.target_db }} migrate failed.
+              suggest: check task status.
+              operator: '=='
+              value: 3
+              status: true
+            critical:
+              errorcode: sync-state-critical
+              message: dts task {{ $labels.task_id }} from {{ $labels.source_db }} to {{ $labels.target_db }} migrate failed.
+              suggest: check task status.
+              operator: '=='
+              value: 3
+              status: true
+            severity:
+              value: critical
+              status: true
+            unit:
+              desc: ""
+              value: ""
+    
+    # 复制延迟
+    - name: binlog-delay
+      aliasName: binlog-delay
+      labels:
+        alertingTypeName: DBMotion
+      supportedTargetTypes:
+        - DBMotion
+      description: 复制延迟超过warning阈值时，提醒有复制延迟；超过error阈值时，严重警告。单位：秒
+      spec:
+        unitOptional: false
+        rules:
+          - name: 复制延迟
+            expr: dts_binlog_delay{event_type="write"}
+            advanced:
+              last: 1
+              status: false
+            description: 复制延迟超过warning阈值时，提醒有复制延迟；超过error阈值时，严重警告。单位：秒
+            time:
+              status: true
+              groupInterval: 5
+              repeatInterval: 240
+            match:
+              labelName: ""
+              values: [ ]
+              prompt: ""
+              desc: ""
+              status: false
+              op: ""
+            warn:
+              errorcode: binlog-delay-warning
+              message: dts task {{ $labels.task_id }} binlog delay {{ $value }} is above warning threshold.
+              suggest: check binlog delay
+              operator: '>='
+              value: 60
+              status: true
+            critical:
+              errorcode: binlog-delay-critical
+              message: dts task {{ $labels.task_id }} binlog delay {{ $value }} is above critical threshold.
+              suggest: check binlog delay
+              operator: '>='
+              value: 600
+              status: true
+            severity:
+              value: ""
+              status: false
+            unit:
+              desc: "second"
+              value: second
+  alerting-type.yml: |-
+    - name: DBMotion
+      aliasName: DBMotion
+      supportedTargetTypes:
+        - DBMotion
+  alerting-target-type.yml: |-
+    # DBmotion
+    - name: DBMotion
+      aliasName: DBMotion
+  alerting-templates.yml: |-
+    - name: DBMotion
+      type: DBMotion
+      groupIntervalMinute: 5
+      repeatIntervalMinute: 240
+      metrics:
+        - name: task-status
+        - name: binlog-delay
+---
+# Source: monitor/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitor-conf
+  namespace: dts
+data:
+  prometheus.yml: |-
+    # monitor 初始化配置
+    # 全局配置， 通常可以被job单独的配置覆盖
+    global:
+      # target 定时任务周期
+      scrape_interval: 1m
+      # 拉取指标超时
+      scrape_timeout: 50s
+      # 执行 rules 规则的时间
+      evaluation_interval: 1m
+      external_labels:
+        cluster: monitor-ha
+    
+    # 规则文件列表
+    rule_files:
+      - /etc/monitor/rules.yml
+    
+    # 告警组件
+    alerting:
+      alert_relabel_configs:
+        - source_labels: [ tid, exporter, ip ]
+          separator: ;
+          regex: (.*);(.*);(.*)
+          target_label: routing_key
+          replacement: ${1}__${2}__${3}
+          action: replace
+      # 告警配置文件
+      alertmanagers:
+        - api_version: v1
+          static_configs:
+            - targets: [ "alertmanager:9093" ]
+          timeout: 10s
+          path_prefix: /
+    
+    # 数据抓取配置
+    scrape_configs:
+      - job_name: dts-exporter
+        scrape_interval: 15s
+        scrape_timeout: 10s
+        metrics_path: /api/motion/v2/metrics
+        scheme: http
+        static_configs:
+          - targets: [
+            'dts-api-server.dts:3000'
+          ]
+  alertmanager.yml: |-
+    global:
+      resolve_timeout: 5m
+    
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://127.0.0.1:5001/'
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'dev', 'instance']
+  inhibit.yml: |-    # eg.同一个对象的同一告警项warn和critical都发生时抑制warn
+    - source_match:
+        severity: critical
+      target_match:
+        severity: warn
+      equal:
+      - _alertingTargetUuid
+      - _alertingRuleUuid
 ---
 # Source: monitor/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: prometheus-dts
+  name: monitor-dts
 rules:
   - apiGroups: [""]
     resources:
@@ -27,21 +1038,21 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: prometheus-dts
+  name: monitor-dts
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: prometheus-dts
+  name: monitor-dts
 subjects:
   - kind: ServiceAccount
-    name: prometheus
+    name: monitor
     namespace: dts
 ---
 # Source: monitor/templates/service.yaml
 kind: Service
 apiVersion: v1
 metadata:
-  name: prometheus-headless
+  name: monitor-headless
   namespace: dts
   labels:
     app.kubernetes.io/name: monitor
@@ -63,14 +1074,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus
+  name: monitor
   labels:
-    name: prometheus
+    name: monitor
     kubernetes.io/cluster-service: 'true'
 spec:
   ports:
-    - name: prometheus
-      nodePort: 32005
+    - name: monitor
       port: 9090
       protocol: TCP
       targetPort: 9090
@@ -128,7 +1138,7 @@ metadata:
   labels:
     app.kubernetes.io/name: monitor
 spec:
-  serviceName: prometheus-headless
+  serviceName: monitor-headless
   podManagementPolicy: Parallel
   replicas: 1
   selector:
@@ -141,28 +1151,28 @@ spec:
         app.kubernetes.io/name: monitor
         qfusion/useIstio: "true"
     spec:
-      serviceAccountName: prometheus
+      serviceAccountName: monitor
       securityContext:
         runAsUser: 0
         fsGroup: 0
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
-          image: k8smaster.qfusion.irds/irds/dbmotion-monitor-conf:latest
+          image: k8smaster.qfusion.irds/irds/alpine:3.6
           command:
             - sh
             - -c
-            - cp -r /phoenix-conf/* /phoenix && cp -r /monitor-conf/* /monitor && cp -r /alert-tmpl/* /alert
+            - |
+              cd /dts-monitor
+              cp * /dts-conf/
           volumeMounts:
-            - name: phoenix-conf
-              mountPath: /phoenix
             - name: monitor-conf
-              mountPath: /monitor
-            - name: tmpl-volume
-              mountPath: /alert
+              mountPath: /dts-monitor
+            - name: shared-conf
+              mountPath: /dts-conf
       containers:
         - name: phoenix
-          image: k8smaster.qfusion.irds/irds/phoenix:v1.4.1-dbmotion
+          image: k8smaster.qfusion.irds/irds/phoenix:hcs-dbmotion
           imagePullPolicy: Always
           args:
             - "--database-address=qfusion-cmdb0.qfusion"
@@ -170,19 +1180,19 @@ spec:
             - "--database-username=root"
             - "--database-password=letsg0"
             - "--database-database=dts_phoenix"
-            - "--data-dir=/etc/phoenix/monitor"
+            - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
             - "--prom-url=http://prometheus:9090"
             - "--alert-url=http://alertmanager:9093"
             - "--tmpl-dir=/etc/alert/tmpl"
-            - "--alerting-target-type-file-path=/etc/phoenix/conf/target_type.yml"
-            - "--alerting-type-file-path=/etc/phoenix/conf/alerting_type.yml"
-            - "--alerting-model-file-paths=/etc/phoenix/conf/dbmotion_model.yml"
-            - "--default-templates-file-path=/etc/phoenix/conf/templates.yml"
+            - "--alerting-target-type-file-path=/etc/phoenix/conf/alerting-target-type.yml"
+            - "--alerting-type-file-path=/etc/phoenix/conf/alerting-type.yml"
+            - "--alerting-model-file-paths=/etc/phoenix/conf/alerting-model.yml"
+            - "--default-templates-file-path=/etc/phoenix/conf/alerting-templates.yml"
             - "--notify-base-url=http://phoenix:9091"
             - "--http-receivers-discovery-endpoint=http://webserver-cluster.qfusion/api/v1/phoenix/alerting_receivers"
-            - "--http-targets-discovery-endpoints=http://dts-api-server.qfusion:3000/api/motion/v2/alert/phoenix/targets"
-            - "--alert-hook=http://dts-api-server.qfusion:3000/api/motion/v2/alert/notice"
+            - "--http-targets-discovery-endpoints=http://dts-api-server.dts:3000/api/motion/v2/alert/phoenix/targets"
+            - "--alert-hook=http://dts-api-server.dts:3000/api/motion/v2/alert/notice"
             - "--http-discovery-interval=60"
             - "--enable-multi-tenant=false"
             - "--tailor-port=15100"
@@ -197,6 +1207,10 @@ spec:
               mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/phoenix/monitor
+            - name: data
+              mountPath: /monitor/data
+            - name: shared-conf
+              mountPath: /dts-conf
             - name: timezone
               mountPath: /etc/timezone
             - name: localtime
@@ -240,8 +1254,10 @@ spec:
           volumeMounts:
             - name: monitor-conf
               mountPath: /etc/prometheus
-            - name: prometheus-storage
+            - name: data
               mountPath: /prometheus/data
+            - name: shared-conf
+              mountPath: /dts-conf
             - name: timezone
               mountPath: /etc/timezone
             - name: localtime
@@ -258,26 +1274,32 @@ spec:
               protocol: TCP
               name: alertmanager
           volumeMounts:
+            - name: alertmanager-tmpl
+              mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/alertmanager
-            - name: tmpl-volume
-              mountPath: /etc/alert/tmpl
-            - name: alertmanager-storage
+            - name: data
               mountPath: /alertmanager/data
+            - name: shared-conf
+              mountPath: /dts-conf
             - name: timezone
               mountPath: /etc/timezone
             - name: localtime
               mountPath: /etc/localtime
       volumes:
         - name: phoenix-conf
-          emptyDir: { }
+          configMap:
+            name: phoenix-conf
         - name: monitor-conf
+          configMap:
+            name: monitor-conf
+        - name: alertmanager-tmpl
+          configMap:
+            name: alertmanager-tmpl
+        - name: shared-conf
           emptyDir: { }
         - name: tmpl-volume
           emptyDir: { }
-        - name: my-cnf
-          configMap:
-            name: mysql-conf
         - name: timezone
           hostPath:
             path: /etc/timezone
@@ -302,7 +1324,7 @@ spec:
     - apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: prometheus-storage
+        name: data
         namespace: dts
       spec:
         storageClassName: csi-localpv
@@ -311,15 +1333,3 @@ spec:
         resources:
           requests:
             storage: 200Gi
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: alertmanager-storage
-        namespace: dts
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Mi

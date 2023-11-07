@@ -6,8 +6,3 @@
   equal:
   - _alertingTargetUuid
   - _alertingRuleUuid
-  - device
-  - mountpoint
-  - tablespacename
-  - slot
-  - name

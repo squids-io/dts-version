@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-tmpl
+  namespace: {{.Release.Namespace}}
+data:
+  email.tmpl: |-
+{{ .Files.Get "conf/alertmanager/email-default.tmpl" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phoenix-conf
+  namespace: {{.Release.Namespace}}
+data:
+  alerting-model.yml: |-
+{{ .Files.Get "conf/phoenix/alerting_model.yml" | indent 4 }}
+  alerting-type.yml: |-
+{{ .Files.Get "conf/phoenix/alerting_type.yml" | indent 4 }}
+  alerting-target-type.yml: |-
+{{ .Files.Get "conf/phoenix/alerting_target_type.yml" | indent 4 }}
+  alerting-templates.yml: |-
+{{ .Files.Get "conf/phoenix/templates.yml" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitor-conf
+  namespace: {{.Release.Namespace}}
+data:
+  prometheus.yml: |-
+{{ .Files.Get "conf/monitor/prometheus.yml" | indent 4 }}
+  alertmanager.yml: |-
+{{ .Files.Get "conf/monitor/alertmanager.yml"  | indent 4 }}
+  inhibit.yml: |-
+{{- .Files.Get "conf/monitor/inhibit.yml" | indent 4 }}

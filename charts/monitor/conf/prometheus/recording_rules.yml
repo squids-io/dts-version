@@ -1,5 +1,0 @@
-groups:
-  - name: database
-    rules:
-      - record: container_memory_usage_rss_and_shmem
-        expr: container_memory_rss + ignoring(job,instance) group_left container_memory_shmem

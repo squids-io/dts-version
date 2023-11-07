@@ -42,7 +42,7 @@ cleaner:
   image:
     pullPolicy: IfNotPresent
     name: efk-cleaner
-    tag: "1.0"
+    tag: "v1.3.5"
   defaultExpire: 30
   auditlogExpire: 7
 configer:
