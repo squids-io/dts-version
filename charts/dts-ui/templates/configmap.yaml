@@ -38,7 +38,7 @@ data:
         }
 
         server {
-            listen 80;
+            listen 8080;
             # server_name localhost;
 
             add_header 'Access-Control-Allow-Origin' "$http_origin";

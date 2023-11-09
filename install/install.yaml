@@ -215,7 +215,7 @@ data:
         }
 
         server {
-            listen 80;
+            listen 8080;
             # server_name localhost;
 
             add_header 'Access-Control-Allow-Origin' "$http_origin";
@@ -344,8 +344,8 @@ spec:
     app.kubernetes.io/name: dts-ui
   ports:
     - name: http
-      port: 80
-      targetPort: 80
+      port: 8080
+      targetPort: 8080
       nodePort: 30001
 ---
 # Source: dts-ui/templates/deployment.yaml
