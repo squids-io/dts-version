@@ -6,6 +6,31 @@ metadata:
   name: dboperator
   namespace: dts
 ---
+# Source: dts-api-server/templates/secret.yaml
+# Source: Secret.yaml
+apiVersion: v1
+data:
+  password: XXX
+  username: XXX
+kind: Secret
+metadata:
+  labels:
+    AppName: qfusion-cmdb
+    CreatedBy: woqutech.com
+    DBBranch: mysql5.7
+    DBType: Database
+    TenantId: 847798ee3db44716b6357b04e5a55c16
+    app.kubernetes.io/instance: qfusion-mysqlcluster
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: qfusion-cmdb
+    app.kubernetes.io/version: 0.1.0
+    helm.sh/chart: mysqlcluster-0.1.0
+    installer.woqutech.com/managed-by: qfusion-installer-operator
+    installer.woqutech.com/package: qfusion-mysqlcluster
+  name: cmdb0-root-suffix
+  namespace: dts
+type: Opaque
+---
 # Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -118,9 +143,15 @@ spec:
             - name: MYSQL_PORT
               value: "3306"
             - name: MYSQL_USER_NAME
-              value: root
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
             - name: MYSQL_PASSWORD
-              value: letsg0
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
             - name: CPU_REQUEST
               value: 100m
             - name: CPU_LIMIT
@@ -142,8 +173,6 @@ spec:
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
-            - name: dts-proxy-files
-              mountPath: /client_files
             - name: log-volume
               mountPath: /dbmotion/log
           ports:
@@ -161,6 +190,4 @@ spec:
           hostPath:
             path: /etc/localtime
         - name: log-volume
-          emptyDir: { }
-        - name: dts-proxy-files
           emptyDir: { }

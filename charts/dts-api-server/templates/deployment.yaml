@@ -64,9 +64,15 @@ spec:
             - name: MYSQL_PORT
               value: "{{  .Values.cmdbPort }}"
             - name: MYSQL_USER_NAME
-              value: {{  .Values.cmdbUsername }}
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
             - name: MYSQL_PASSWORD
-              value: {{  .Values.cmdbPassword }}
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
             - name: CPU_REQUEST
               value: 100m
             - name: CPU_LIMIT
@@ -88,8 +94,6 @@ spec:
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
-            - name: dts-proxy-files
-              mountPath: /client_files
             - name: log-volume
               mountPath: /dbmotion/log
           ports:
@@ -107,6 +111,4 @@ spec:
           hostPath:
             path: /etc/localtime
         - name: log-volume
-          emptyDir: { }
-        - name: dts-proxy-files
           emptyDir: { }

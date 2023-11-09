@@ -45,8 +45,8 @@ spec:
           args:
             - "--database-address={{ .Values.database.address }}"
             - "--database-port={{ .Values.database.port }}"
-            - "--database-username=root"
-            - "--database-password=letsg0"
+            - "--database-username=$(DATABASE_USERNAME)"
+            - "--database-password=$(DATABASE_PASSWORD)"
             - "--database-database={{ .Values.database.name }}"
             - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
@@ -64,6 +64,17 @@ spec:
             - "--http-discovery-interval=60"
             - "--enable-multi-tenant=false"
             - "--tailor-port=15100"
+          env:
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
           ports:
             - containerPort: 9091
               protocol: TCP

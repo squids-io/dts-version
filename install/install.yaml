@@ -15,6 +15,31 @@ metadata:
   name: dboperator
   namespace: dts
 ---
+# Source: dts-api-server/templates/secret.yaml
+# Source: Secret.yaml
+apiVersion: v1
+data:
+  password: XXX
+  username: XXX
+kind: Secret
+metadata:
+  labels:
+    AppName: qfusion-cmdb
+    CreatedBy: woqutech.com
+    DBBranch: mysql5.7
+    DBType: Database
+    TenantId: 847798ee3db44716b6357b04e5a55c16
+    app.kubernetes.io/instance: qfusion-mysqlcluster
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: qfusion-cmdb
+    app.kubernetes.io/version: 0.1.0
+    helm.sh/chart: mysqlcluster-0.1.0
+    installer.woqutech.com/managed-by: qfusion-installer-operator
+    installer.woqutech.com/package: qfusion-mysqlcluster
+  name: cmdb0-root-suffix
+  namespace: dts
+type: Opaque
+---
 # Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -127,9 +152,15 @@ spec:
             - name: MYSQL_PORT
               value: "3306"
             - name: MYSQL_USER_NAME
-              value: root
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
             - name: MYSQL_PASSWORD
-              value: letsg0
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
             - name: CPU_REQUEST
               value: 100m
             - name: CPU_LIMIT
@@ -151,8 +182,6 @@ spec:
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
-            - name: dts-proxy-files
-              mountPath: /client_files
             - name: log-volume
               mountPath: /dbmotion/log
           ports:
@@ -170,8 +199,6 @@ spec:
           hostPath:
             path: /etc/localtime
         - name: log-volume
-          emptyDir: { }
-        - name: dts-proxy-files
           emptyDir: { }
 ---
 # Source: dts-ui/templates/configmap.yaml
@@ -274,22 +301,6 @@ data:
               proxy_read_timeout 36000;
               proxy_send_timeout 36000;
               send_timeout 36000;
-            }
-
-            location ~* ^/api/motion/v2/client_files {
-                root /client_files;
-                proxy_pass http://dts-api-server.dts:3000;
-                proxy_set_header Host $http_host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection $connection_upgrade;
-                proxy_http_version 1.1;
-                proxy_connect_timeout 36000;
-                proxy_read_timeout 36000;
-                proxy_send_timeout 36000;
-                send_timeout 36000;
             }
 
             location ~* ^/api/motion/v2/template_file {
@@ -4675,8 +4686,8 @@ spec:
           args:
             - "--database-address=qfusion-cmdb0.qfusion"
             - "--database-port=3306"
-            - "--database-username=root"
-            - "--database-password=letsg0"
+            - "--database-username=$(DATABASE_USERNAME)"
+            - "--database-password=$(DATABASE_PASSWORD)"
             - "--database-database=dts_phoenix"
             - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
@@ -4694,6 +4705,17 @@ spec:
             - "--http-discovery-interval=60"
             - "--enable-multi-tenant=false"
             - "--tailor-port=15100"
+          env:
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
           ports:
             - containerPort: 9091
               protocol: TCP
@@ -4831,27 +4853,3 @@ spec:
         resources:
           requests:
             storage: 200Gi
----
-# Source: Secret.yaml
-apiVersion: v1
-data:
-  password: UXAyUFpXcmdOTXozVDlR
-  username: cm9vdA==
-kind: Secret
-metadata:
-  labels:
-    AppName: qfusion-cmdb
-    CreatedBy: woqutech.com
-    DBBranch: mysql5.7
-    DBType: Database
-    TenantId: 847798ee3db44716b6357b04e5a55c16
-    app.kubernetes.io/instance: qfusion-mysqlcluster
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: qfusion-cmdb
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: mysqlcluster-0.1.0
-    installer.woqutech.com/managed-by: qfusion-installer-operator
-    installer.woqutech.com/package: qfusion-mysqlcluster
-  name: qfusion-cmdb0-root-suffix
-  namespace: dts
-type: Opaque

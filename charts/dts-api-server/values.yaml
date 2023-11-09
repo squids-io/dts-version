@@ -25,8 +25,8 @@ elasticSearchPort: 9200
 # cmdb
 cmdbAddr: "qfusion-cmdb0.qfusion"
 cmdbPort: "3306"
-cmdbUsername: "root"
-cmdbPassword: "letsg0"
+cmdbUsername: "xxx"
+cmdbPassword: "xxx"
 cmdbUri: "root:letsg0@qfusion-cmdb0.qfusion:3306/webserver"
 
 es:
