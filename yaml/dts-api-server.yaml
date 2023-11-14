@@ -31,6 +31,16 @@ metadata:
   namespace: dts
 type: Opaque
 ---
+# Source: dts-api-server/templates/configmap.yaml
+apiVersion: v1
+data:
+  timezone: |
+    Asia/Shanghai
+kind: ConfigMap
+metadata:
+  name: timezone
+  namespace: dts
+---
 # Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -122,6 +132,8 @@ spec:
               value: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
             - name: KAFKA_IMAGE
               value: k8smaster.qfusion.irds/irds/kafka:3.5.1
+            - name: DBMOTION_INIT_IMAGE
+              value: k8smaster.qfusion.irds/irds/alpine:3.18.2.base
             - name: DBMOTION_WEB_ADDR
               value: http://dts-api-server:3000
             - name: DBMOTION_PUB_IP
@@ -184,8 +196,8 @@ spec:
               protocol: TCP
       volumes:
         - name: timezone
-          hostPath:
-            path: /etc/timezone
+          configMap:
+            name: timezone
         - name: localtime
           hostPath:
             path: /etc/localtime

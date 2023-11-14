@@ -43,6 +43,8 @@ spec:
               value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.image.name }}:{{ .Values.api.image.tag }}
             - name: KAFKA_IMAGE
               value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.kafkaImage.name }}:{{ .Values.api.kafkaImage.tag }}
+            - name: DBMOTION_INIT_IMAGE
+              value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.initImage.name }}:{{ .Values.api.initImage.tag }}
             - name: DBMOTION_WEB_ADDR
               value: {{ .Values.dbmotion.webAddr }}
             - name: DBMOTION_PUB_IP
@@ -105,8 +107,8 @@ spec:
               protocol: TCP
       volumes:
         - name: timezone
-          hostPath:
-            path: /etc/timezone
+          configMap:
+            name: timezone
         - name: localtime
           hostPath:
             path: /etc/localtime

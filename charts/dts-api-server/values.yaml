@@ -76,6 +76,10 @@ api:
     name: kafka
     tag: "3.5.1"
     pullPolicy: Always
+  initImage:
+    name: alpine
+    tag: "3.18.2.base"
+    pullPolicy: Always
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
