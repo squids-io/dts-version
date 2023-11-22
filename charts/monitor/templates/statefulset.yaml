@@ -17,7 +17,6 @@ spec:
       name: monitor
       labels:
         app.kubernetes.io/name: monitor
-        qfusion/useIstio: "true"
     spec:
       serviceAccountName: monitor
       securityContext:

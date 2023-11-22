@@ -10,7 +10,7 @@ image:
   repository: irds
   dataDir: /opt/qfusion
   name: dbmotion-ui
-  tag: hcs-dev
+  tag: 2310-hcs-oem
   pullPolicy: Always
 
 # 亲和性

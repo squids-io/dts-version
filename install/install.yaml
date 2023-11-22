@@ -52,13 +52,34 @@ metadata:
 ---
 # Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dts-admin
+  annotations:
+    rbac.authorization.k8s.io/auroupdate: "true"
+  labels:
+    kubernets.io/bootstrapping: "rbac-defaults"
+rules:
+- apiGroups:
+    - '*'
+  resources:
+    - '*'
+  verbs:
+    - '*'
+- nonResourceURLs:
+    - '*'
+  verbs:
+    - '*'
+---
+# Source: dts-api-server/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: dboperator-dts
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: dboperator-dts
+  name: dts-admin
 subjects:
   - kind: ServiceAccount
     name: dboperator
@@ -105,7 +126,6 @@ spec:
       name: dts-api-server
       labels:
         app.kubernetes.io/name: dts-api-server
-        qfusion/useIstio: "true"
     spec:
       serviceAccountName: dboperator
       terminationGracePeriodSeconds: 30
@@ -130,7 +150,7 @@ spec:
           tolerationSeconds: 60
       containers:
         - name: api
-          image: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+          image: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
           imagePullPolicy: Always
           securityContext:
             privileged: true
@@ -138,11 +158,11 @@ spec:
           terminationMessagePolicy: File
           env:
             - name: DBMOTION_IMAGE
-              value: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+              value: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
             - name: KAFKA_IMAGE
-              value: k8smaster.qfusion.irds/irds/kafka:3.5.1
+              value: k8smaster.qfusion.irds/irds/kafka:hcs-oem
             - name: DBMOTION_INIT_IMAGE
-              value: k8smaster.qfusion.irds/irds/alpine:3.18.2.base
+              value: k8smaster.qfusion.irds/irds/alpine:3.18.2
             - name: DBMOTION_WEB_ADDR
               value: http://dts-api-server:3000
             - name: DBMOTION_PUB_IP
@@ -163,6 +183,8 @@ spec:
               value: qfusion-cmdb0.qfusion
             - name: MYSQL_PORT
               value: "3306"
+            - name: DBMOTION_SECURITY_ENABLE
+              value: "y"
             - name: MYSQL_USER_NAME
               valueFrom:
                 secretKeyRef:
@@ -190,7 +212,7 @@ spec:
             - name: SAAS_MODE
               value: "HCS"
             - name: CMDB_URI
-              value: root:letsg0@qfusion-cmdb0.qfusion:3306/webserver
+              value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/dbmotion
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
@@ -388,7 +410,6 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: dts-ui
-        qfusion/useIstio: "true"
     spec:
       affinity: 
         podAntiAffinity:
@@ -403,7 +424,7 @@ spec:
       
       containers:
         - name: ui
-          image: k8smaster.qfusion.irds/irds/dbmotion-ui:hcs-dev
+          image: k8smaster.qfusion.irds/irds/dbmotion-ui:2310-hcs-oem
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -609,7 +630,7 @@ spec:
           operator: Exists
       initContainers: # will always initialize before other containers
         - name: init-sysctl
-          image: k8smaster.qfusion.irds/irds/alpine:3.6
+          image: k8smaster.qfusion.irds/irds/alpine:3.18.2
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh","-c"," sysctl -w vm.max_map_count=262144 && chown -R 1000 /usr/share/elasticsearch/data"]
           securityContext:
@@ -623,7 +644,7 @@ spec:
             capabilities:
               add:
                 - IPC_LOCK
-          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.23
+          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.18-hcs-oem
           imagePullPolicy: Always
           env:
             - name: "CLUSTER_NAME"
@@ -690,7 +711,7 @@ spec:
       serviceAccountName: elasticsearch-logging
       containers:
         - name: runner
-          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.1"
+          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.2-hcs-oem"
           imagePullPolicy: IfNotPresent
           command: [ "/bin/bash",  "/config-es.sh" ]
           env:
@@ -732,7 +753,7 @@ spec:
               operator: Exists
           containers:
           - name: efk-cleaner
-            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.3.5
+            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.3.7
             imagePullPolicy: IfNotPresent
             volumeMounts:
             - name: config
@@ -1200,7 +1221,7 @@ spec:
           operator: Exists
       containers:
         - name: fluent-bit
-          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9
+          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
           imagePullPolicy: Always
           ports:
             - containerPort: 2020
@@ -1301,7 +1322,7 @@ spec:
           operator: Exists
       containers:
         - name: fluent-bit
-          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9
+          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
           imagePullPolicy: Always
           ports:
             - containerPort: 2020
@@ -3466,7 +3487,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: k8smaster.qfusion.irds/irds/grafana:v10.1.1
+          image: k8smaster.qfusion.irds/irds/grafana:10.1.1
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0
@@ -4670,7 +4691,6 @@ spec:
       name: monitor
       labels:
         app.kubernetes.io/name: monitor
-        qfusion/useIstio: "true"
     spec:
       serviceAccountName: monitor
       securityContext:
@@ -4679,7 +4699,7 @@ spec:
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
-          image: k8smaster.qfusion.irds/irds/alpine:3.6
+          image: k8smaster.qfusion.irds/irds/alpine:3.18.2
           command:
             - sh
             - -c
@@ -4693,7 +4713,7 @@ spec:
               mountPath: /dts-conf
       containers:
         - name: phoenix
-          image: k8smaster.qfusion.irds/irds/phoenix:hcs-dbmotion
+          image: k8smaster.qfusion.irds/irds/phoenix:1.4.7-dbmotion-hcs-oem
           imagePullPolicy: Always
           args:
             - "--database-address=qfusion-cmdb0.qfusion"
@@ -4748,7 +4768,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: prometheus
-          image: k8smaster.qfusion.irds/irds/prometheus:v2.43.1
+          image: k8smaster.qfusion.irds/irds/prometheus:v2.47.0
           imagePullPolicy: IfNotPresent
           args:
             - --config.file=/etc/prometheus/prometheus.yml
@@ -4795,7 +4815,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: alertmanager
-          image: k8smaster.qfusion.irds/irds/alertmanager:v0.23.0
+          image: k8smaster.qfusion.irds/irds/alertmanager:v0.26.0
           imagePullPolicy: IfNotPresent
           args:
             - --storage.path=/alertmanager/data

@@ -1149,7 +1149,6 @@ spec:
       name: monitor
       labels:
         app.kubernetes.io/name: monitor
-        qfusion/useIstio: "true"
     spec:
       serviceAccountName: monitor
       securityContext:
@@ -1158,7 +1157,7 @@ spec:
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
-          image: k8smaster.qfusion.irds/irds/alpine:3.6
+          image: k8smaster.qfusion.irds/irds/alpine:3.18.2
           command:
             - sh
             - -c
@@ -1172,7 +1171,7 @@ spec:
               mountPath: /dts-conf
       containers:
         - name: phoenix
-          image: k8smaster.qfusion.irds/irds/phoenix:hcs-dbmotion
+          image: k8smaster.qfusion.irds/irds/phoenix:1.4.7-dbmotion-hcs-oem
           imagePullPolicy: Always
           args:
             - "--database-address=qfusion-cmdb0.qfusion"
@@ -1227,7 +1226,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: prometheus
-          image: k8smaster.qfusion.irds/irds/prometheus:v2.43.1
+          image: k8smaster.qfusion.irds/irds/prometheus:v2.47.0
           imagePullPolicy: IfNotPresent
           args:
             - --config.file=/etc/prometheus/prometheus.yml
@@ -1274,7 +1273,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: alertmanager
-          image: k8smaster.qfusion.irds/irds/alertmanager:v0.23.0
+          image: k8smaster.qfusion.irds/irds/alertmanager:v0.26.0
           imagePullPolicy: IfNotPresent
           args:
             - --storage.path=/alertmanager/data

@@ -43,13 +43,34 @@ metadata:
 ---
 # Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dts-admin
+  annotations:
+    rbac.authorization.k8s.io/auroupdate: "true"
+  labels:
+    kubernets.io/bootstrapping: "rbac-defaults"
+rules:
+- apiGroups:
+    - '*'
+  resources:
+    - '*'
+  verbs:
+    - '*'
+- nonResourceURLs:
+    - '*'
+  verbs:
+    - '*'
+---
+# Source: dts-api-server/templates/serviceaccount.yaml
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: dboperator-dts
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: dboperator-dts
+  name: dts-admin
 subjects:
   - kind: ServiceAccount
     name: dboperator
@@ -96,7 +117,6 @@ spec:
       name: dts-api-server
       labels:
         app.kubernetes.io/name: dts-api-server
-        qfusion/useIstio: "true"
     spec:
       serviceAccountName: dboperator
       terminationGracePeriodSeconds: 30
@@ -121,7 +141,7 @@ spec:
           tolerationSeconds: 60
       containers:
         - name: api
-          image: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+          image: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
           imagePullPolicy: Always
           securityContext:
             privileged: true
@@ -129,11 +149,11 @@ spec:
           terminationMessagePolicy: File
           env:
             - name: DBMOTION_IMAGE
-              value: k8smaster.qfusion.irds/irds/dbmotion:hcs-dev
+              value: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
             - name: KAFKA_IMAGE
-              value: k8smaster.qfusion.irds/irds/kafka:3.5.1
+              value: k8smaster.qfusion.irds/irds/kafka:hcs-oem
             - name: DBMOTION_INIT_IMAGE
-              value: k8smaster.qfusion.irds/irds/alpine:3.18.2.base
+              value: k8smaster.qfusion.irds/irds/alpine:3.18.2
             - name: DBMOTION_WEB_ADDR
               value: http://dts-api-server:3000
             - name: DBMOTION_PUB_IP
@@ -154,6 +174,8 @@ spec:
               value: qfusion-cmdb0.qfusion
             - name: MYSQL_PORT
               value: "3306"
+            - name: DBMOTION_SECURITY_ENABLE
+              value: "y"
             - name: MYSQL_USER_NAME
               valueFrom:
                 secretKeyRef:
@@ -181,7 +203,7 @@ spec:
             - name: SAAS_MODE
               value: "HCS"
             - name: CMDB_URI
-              value: root:letsg0@qfusion-cmdb0.qfusion:3306/webserver
+              value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/dbmotion
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime

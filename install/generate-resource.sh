@@ -1,1 +1,1 @@
-kubectl apply -f  install.yaml -ndts
+kubectl apply -f  install_dts.yaml -ndts

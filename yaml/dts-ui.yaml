@@ -174,7 +174,6 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: dts-ui
-        qfusion/useIstio: "true"
     spec:
       affinity: 
         podAntiAffinity:
@@ -189,7 +188,7 @@ spec:
       
       containers:
         - name: ui
-          image: k8smaster.qfusion.irds/irds/dbmotion-ui:hcs-dev
+          image: k8smaster.qfusion.irds/irds/dbmotion-ui:2310-hcs-oem
           imagePullPolicy: Always
           ports:
             - containerPort: 80

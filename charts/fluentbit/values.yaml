@@ -7,7 +7,7 @@ global:
 image:
   pullPolicy: Always
   name: fluent-bit
-  tag: 2.0.9
+  tag: 2.0.9.1-hcs-oem
 nameOverride: ""
 #resources:
 #  requests:

@@ -8,13 +8,13 @@ global:
 image:
   pullPolicy: Always
   name: elasticsearch
-  tag: 6.8.23
+  tag: 6.8.18-hcs-oem
 
 init:
   image:
     pullPolicy: IfNotPresent
     name: alpine
-    tag: "3.6"
+    tag: "3.18.2"
 
 dataPath: ""
 nameOverride: ""
@@ -42,7 +42,7 @@ cleaner:
   image:
     pullPolicy: IfNotPresent
     name: efk-cleaner
-    tag: "v1.3.5"
+    tag: "v1.3.7"
   defaultExpire: 30
   auditlogExpire: 7
 configer:
@@ -50,4 +50,4 @@ configer:
   image:
     pullPolicy: IfNotPresent
     name: elasticsearch-config-job
-    tag: v0.3.1
+    tag: v0.3.2-hcs-oem
