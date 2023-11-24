@@ -56,8 +56,6 @@ metadata:
 data:
   config.yaml: |
     defaultExpire: 30
-    expires:
-      auditlog: 7
 ---
 # Source: elasticsearch/templates/serviceaccount.yaml
 kind: ClusterRole
@@ -214,7 +212,7 @@ spec:
             - name: "NODE_DATA"
               value: "true"
             - name: "NUMBER_OF_MASTER"
-              value: "2"
+              value: "1"
             - name: ES_JAVA_OPTS
               value: -Xms2g -Xmx2g
           ports:
@@ -229,7 +227,7 @@ spec:
               command:
                 - sh
                 - -c
-                - curl --fail 127.0.0.1:9200/_cluster/health && curl --fail 127.0.0.1:9200/.qf-ack-index-3.13.10
+                - curl --fail 127.0.0.1:9200/_cluster/health
             initialDelaySeconds: 20
             timeoutSeconds: 5
           volumeMounts:

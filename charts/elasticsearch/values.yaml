@@ -32,7 +32,7 @@ nodeSelector:
   qfusion/master: "true"
 
 processors: 5
-masterNumber: 2
+masterNumber: 1
 javaOpts: "-Xms2g -Xmx2g"
 # 绑定的网卡的名称，有3个特殊值，_local_绑定本地地址，_site_绑定私有地址所在的网卡, _global_绑定公有地址所在的网卡
 networkHost: 0.0.0.0
@@ -44,7 +44,6 @@ cleaner:
     name: efk-cleaner
     tag: "v1.3.7"
   defaultExpire: 30
-  auditlogExpire: 7
 configer:
   enabled: true
   image:

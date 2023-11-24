@@ -27,7 +27,7 @@ cmdbAddr: "qfusion-cmdb0.qfusion"
 cmdbPort: "3306"
 cmdbUsername: "xxx"
 cmdbPassword: "xxx"
-cmdbUri: "$(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/dbmotion"
+cmdbUri: "$(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/webserver"
 
 es:
   url: http://elasticsearch-logging.dts:9200

@@ -40,6 +40,4 @@ metadata:
 data:
   config.yaml: |
     defaultExpire: {{.Values.cleaner.defaultExpire}}
-    expires:
-      auditlog: {{.Values.cleaner.auditlogExpire}}
 {{- end -}}

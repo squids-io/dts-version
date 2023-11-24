@@ -46,39 +46,6 @@ data:
           - name: containerlog
             key: logpath
             matchRegex: .*log/containers.*
-          - name: mysqllog
-            key: tag
-            matchRegex: 'mysql-errorlog'
-          - name: mssqllog
-            key: logpath
-            matchRegex: '.+qfusion.*_mssql.+'
-          - name: tidblog
-            key: logpath
-            matchRegex: '.*(-tidb-|-pd-|-tikv-).*.log'
-          - name: mysqlslowlog
-            key: tag
-            matchRegex: 'mysql-slowlog'
-          - name: mysqlauditlog
-            key: tag
-            matchRegex: 'mysql-auditlog'
-          - name: maxscalelog
-            key: logpath
-            matchRegex: '.*_.+-proxy-\d+.+.log'
-          - name: tidbAuditlog
-            key: tag
-            matchRegex: 'tidb-auditlog'
-          - name: pgErrorlog
-            key: tag
-            matchRegex: 'postgres-errorlog'
-          - name: oraAlertLog
-            key: tag
-            matchRegex: 'oracle-alertlog'
-          - name: kafkaLog
-            key: container
-            matchRegex: '^kafka$'
-          - name: gaussdbLog
-            key: tag
-            matchRegex: 'gaussdb-log'
   
       parser:
         parseRegex:
@@ -90,26 +57,6 @@ data:
             key: logpath
             preserve_key: true
             regex: '([^.]+)?/(?P<podName>[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<podNamespace>[^_]+)_(?P<container>.+)-(?P<dockerId>[a-z0-9]{64})\.log$'
-          - name: parseMssqlLog
-            key: log
-            regex: '^(\s?\d{4}-\d{1,2}-\d{1,2}\s\d+:\d+:\d+\.\d+)?(\s?)(?P<log>.*)'
-          - name: parseMaxScaleLog
-            key: log
-            regex: '(\d+-\d+-\d+\s\d+:\d+:\S+\s)?\s*(?P<logLevel>\w+)\s*:\s*(?P<log>(.+))'
-          - name: parseTidbLog
-            key: log
-            regex: '\[(?P<dbtime>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{2}:\d{2}?)\](\s+)\[(?P<logLevel>[A-Z]+?)\](\s+)\[(?P<dblogpath>[a-z0-9_\.:<>]+?)\](\s+)(?P<log>(.|\n)*)'
-          - name: parsePgLog
-            key: log
-            regex: '^(<.)?(?P<time>\d{4}-\d{2}-\d{2}.\d{2}:\d{2}:\d{2}.\d{3}).\w+.(>|\[\d+\]).(?P<log>.\w+: (.|\n).*)'
-          - name: parseOraMeta
-            key: logpath
-            preserve_key: true
-            regex: '^/opt/(?P<version>.+)/diag/rdbms/(?P<uname>.+)/(?P<name>.+)/trace/alert_.+\.log'
-          - name: parseKafkaLog
-            key: log
-            regex: '^(?P<timestamp>[0-9]{1,4}.[0-9]{1,2}.[0-9]{1,2} [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},\d{3}) (?P<logLevel>[^ ]*) (?P<log>[^\n]*) \((?P<logType>[^\]]*)\) \[(?P<thread>[^\]]*)\]'
-  
         parseK8sUid:
           - name: getPodInfoByUid
             key: podUid
@@ -141,13 +88,6 @@ data:
             key: time
             formats:
             - format: 2006-01-02 15:04:05.000
-        parseMySQLSlowLog:
-          - name: parseMySQLSlowLog
-            key: log
-        parseMySQLAuditLog:
-          - name: parseMySQLAuditLog
-        parseTidbAuditLog:
-          - name: parseTidbAuditLog
         parseTruncated:
           - name: truncatedLog
             # 8k
@@ -167,74 +107,6 @@ data:
         parsers:
           - getPodName
           - getPodInfoByName
-      - name: mysqllog
-        matchType: matchAll
-        matchers:
-          - mysqllog
-        parsers:
-          - parseMySQLTime
-      - name: mysqlslowLog
-        matchType: matchOne
-        matchers:
-          - mysqlslowlog
-        parsers:
-          - parseMySQLSlowLog
-      - name: mysqlauditlog
-        matchType: matchOne
-        matchers:
-          - mysqlauditlog
-        parsers:
-          - externalLog
-          - parseMySQLAuditLog
-          - parseMySQLAuditTime
-      - name: mssqllog
-        matchType: matchAll
-        matchers:
-        - mssqllog
-        parsers:
-        - parseMssqlLog
-      - name: maxscalelog
-        matchType: matchAll
-        matchers:
-          - maxscalelog
-        parsers:
-          - parseMaxScaleLog
-      - name: tidbAuditlog
-        matchType: matchAll
-        matchers:
-          - tidbAuditlog
-        parsers:
-          - parseTidbAuditLog
-      - name: tidblog
-        matchType: matchAll
-        matchers:
-          - tidblog
-        parsers:
-          - parseTidbLog
-      - name: pgerrorlog
-        matchType: matchAll
-        matchers:
-          - pgErrorlog
-        parsers:
-          - parsePgLog
-      - name: oraAlertLog
-        matchType: matchAll
-        matchers:
-          - oraAlertLog
-        parsers:
-          - parseOraMeta
-      - name: kafkaLog
-        matchType: matchAll
-        matchers:
-          - kafkaLog
-        parsers:
-          - parseKafkaLog
-      - name: gaussdbLog
-        matchType: matchAll
-        matchers:
-          - gaussdbLog
-        parsers:
-          - parseGaussDBTime
       # truncated parser必须放到最后，其他parser要在这个parser之前
       - name: truncated
         matchType: matchAll

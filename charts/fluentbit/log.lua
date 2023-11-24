@@ -10,17 +10,6 @@ function rewrite_tag(tag, timestamp, record)
             tag = "kafka-log"
         end
     end
-    if tag == "mssql-auditlog" and record ~= nil then
-        record["appName"] = record["cluster_name"]
-        record["podName"] = string.format("%s-0", record["instance_name"])
-        record["podNamespace"] = record["mssql/namespace"]
-    end
-    new_tag = string.format("qfrds-%s", tag)
-    if string.match(tag, ".*auditlog.*") and record ~= nil and record["appName"] ~= nil and string.len(record["appName"]) > 0 then
-    new_tag = string.format("%s-%s", new_tag, record["appName"])
-    end
-    record["tag"] = new_tag
-    return 2, timestamp, record
 end
 
 
@@ -43,12 +32,3 @@ r4 = { a = "b", c = "d", appName = "containerlog"}
 r4["k8s/labels/ProxyType"] = "maxscale"
 _, _, r44 = rewrite_tag("containerlog", 343, r4)
 print(r44["tag"])
-
-r5 = { a = "b", c = "d", appName = "testlog"}
-_, _, r55 = rewrite_tag("mysql-auditlog", 343, r4)
-print(r55["tag"])
-
-r6 = { a = "b", c = "d", appName = "testlog", cluster_name="mssql-abcd", instance_name="mssql-abcd00"}
-r6["mssql/namespace"] = "qfusion-admin"
-_, _, r66 = rewrite_tag("mssql-auditlog", 343, r6)
-print(r66["tag"])

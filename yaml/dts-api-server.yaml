@@ -203,7 +203,7 @@ spec:
             - name: SAAS_MODE
               value: "HCS"
             - name: CMDB_URI
-              value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/dbmotion
+              value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/webserver
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
