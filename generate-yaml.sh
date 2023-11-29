@@ -1,5 +1,6 @@
 #!bin/sh
 rm -rf ./install/install.yaml
+helm template istio charts/istio -n dts  > ./yaml/istio.yaml
 helm template dts-api-server charts/dts-api-server -n dts --set $1 --set $2  > ./yaml/dts-api-server.yaml
 helm template dts-ui charts/dts-ui -n dts > ./yaml/dts-ui.yaml
 helm template grafana charts/grafana -n dts > ./yaml/grafana.yaml

@@ -20,6 +20,7 @@ spec:
       name: dts-api-server
       labels:
         app.kubernetes.io/name: dts-api-server
+        qfusion/useIstio: "true"
     spec:
       serviceAccountName: dboperator
       terminationGracePeriodSeconds: 30

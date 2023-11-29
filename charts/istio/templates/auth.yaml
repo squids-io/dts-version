@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: auth
+spec:
+  progressDeadlineSeconds: 600
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      name: auth
+      annotations:
+        sidecar.istio.io/inject: "y"
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: auth
+        qfusion/useIstio: "true"
+    spec:
+      {{- if gt $.Values.replicaCount 1.0 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: auth
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      containers:
+        - args:
+            - --dbAddr=$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@tcp({{ .Values.db.addr }}:{{ .Values.db.port }})/webserver?parseTime=true&timeout=5s&readTimeout=6s&charset=utf8&parseTime=true&loc=Local
+            - --destAddr=http://dts-ingressgateway
+            - --innerAddr=0.0.0.0:9096
+            - --captchaCheck={{ .Values.auth.captchaCheck }}
+            - --homeUrl=/dts
+            - --logtostderr
+            {{- if .Values.hcs }}
+            - --casServer={{ .Values.auth.casServer }}
+            - --skipVerify={{ .Values.auth.skipVerify }}
+            - --hcsToken=true
+            - --paramWhiteList=homeUrl,state,service,region,home,origin
+            - --defaultDepartment=mo
+            - --useRsaClient=true
+            - --hcsDepartment=true
+            - --sessionApiPrefix=/prometheus
+            - --whiteListPrefix=/prometheus
+            {{- end }}
+          env:
+            - name: NAMESPACE
+              value: {{.Release.Namespace}}
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
+          image: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.auth.image.name }}:{{ .Values.auth.image.tag }}
+          imagePullPolicy: {{ .Values.auth.image.pullPolicy }}
+          name: auth
+          ports:
+            - containerPort: 9095
+              name: auth
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /auth/v1/reload
+              port: 9095
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /etc/conf
+              name: auth-config
+            - mountPath: /etc/localtime
+              name: localtime
+      dnsPolicy: ClusterFirst
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: dboperator
+      serviceAccountName: dboperator
+      terminationGracePeriodSeconds: 0
+      {{- with .Values.tolerations }}
+      tolerations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: auth-config-v0.0.1
+          name: auth-config
+        - hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai
+            type: ""
+          name: localtime
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: {{ .Release.Namespace }}
+  annotations:
+  labels:
+    app.kubernetes.io/name: auth
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-webserver
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: auth
+  ports:
+    - name: http-auth
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+    - name: http-user
+      port: 9096
+      protocol: TCP
+      targetPort: 9096
+---
+kind: ConfigMap
+apiVersion: v1
+data:
+  conf.sql: |
+  {{- range .Files.Glob "casbin_sql/config/*.sql" }}
+  {{ . | toString | indent 4 }}
+  {{- end }}
+
+# 3.13.10开始每个版本新增的权限新加一个conf.sql,例如conf01.conf、conf02.sql、conf03.sql以此类推
+# auth-config-v0.0.1 configmap annotations:history-sql-file: '{"conf.sql":true}' 这边会记录历史的sql，执行过的将不再重复执行
+# casbin sql语句顺序往下面加，不要在上面做修改删除新增操作，会影响adminUser的权限
+# user,department,admin 这三个角色的权限会走继承关系，adminUser是单独的，需要单独给adminUser加权限
+metadata:
+  name: auth-config-v0.0.1
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    history-sql-file: '{"conf.sql": true}'
+  labels:
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-webserver

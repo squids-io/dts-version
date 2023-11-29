@@ -117,6 +117,7 @@ spec:
       name: dts-api-server
       labels:
         app.kubernetes.io/name: dts-api-server
+        qfusion/useIstio: "true"
     spec:
       serviceAccountName: dboperator
       terminationGracePeriodSeconds: 30
@@ -155,7 +156,7 @@ spec:
             - name: DBMOTION_INIT_IMAGE
               value: k8smaster.qfusion.irds/irds/alpine:3.18.2
             - name: DBMOTION_WEB_ADDR
-              value: http://dts-api-server:3000
+              value: http://dts-ingressgateway:80
             - name: DBMOTION_PUB_IP
               value: 127.0.0.1
             - name: DBMOTION_GORM_DEBUG

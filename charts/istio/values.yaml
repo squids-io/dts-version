@@ -1,0 +1,46 @@
+# Default values for operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+global:
+  registry: k8smaster.qfusion.irds
+  repository: irds
+
+db:
+  addr: "qfusion-cmdb0.qfusion"
+  port: "3306"
+
+nodeSelector: {}
+
+auth:
+  enabled: true
+  captchaCheck: true
+  image:
+    pullPolicy: IfNotPresent
+    repository: ""
+    name: auth
+    tag: "v1.0"
+  casbinRules:
+    includeAbout: true
+    includeKibana: true
+  casServer: "https://auth.songshanghu-x86-2.com/authui"
+  skipVerify: true
+
+ingress:
+  image:
+    pullPolicy: IfNotPresent
+    repository: ""
+    name: proxyv2
+    tag: "1.17.2-distroless"
+
+hcs: true
+# 在Pod上设置容忍 (Toleration)，意思是设置了容忍的Pod将可以容忍污点的存在，可以被调度到存在污点的Node上
+tolerations:
+  - effect: NoExecute
+    key: qfusion/master
+    operator: Exists
+  - effect: NoExecute
+    key: node-role.kubernetes.io/master
+    operator: Exists
+    tolerationSeconds: 60

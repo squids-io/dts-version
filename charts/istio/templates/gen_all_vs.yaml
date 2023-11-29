@@ -1,0 +1,73 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: dts
+  namespace: {{.Release.Namespace}}
+  labels:
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-istio
+spec:
+  hosts:
+    - '*'
+  gateways:
+  - qfusion/auth
+  http:
+  - match:
+    - uri:
+        prefix: /dts/grafana
+    route:
+    - destination:
+        host: auth.{{ .Release.Namespace }}.svc.cluster.local
+        port:
+          number: 9095
+  - match:
+    - uri:
+        prefix: /dts
+    - uri:
+        prefix: /upload
+    - uri:
+        prefix: /*.(jpg|png)
+    route:
+    - destination:
+        host: dts-ui.{{ .Release.Namespace }}.svc.cluster.local
+        port:
+          number: 8080
+  - match:
+    - uri:
+        prefix: /api/motion
+    route:
+    - destination:
+        host: auth.{{ .Release.Namespace }}.svc.cluster.local
+        port:
+          number: 9095
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: dts-api-server
+  namespace: {{.Release.Namespace}}
+  labels:
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-istio
+spec:
+  hosts:
+    - '*'
+  gateways:
+  - webserver
+  http:
+  - match:
+    - uri:
+        prefix: /api/motion
+    route:
+    - destination:
+        host: dts-api-server.{{ .Release.Namespace }}.svc.cluster.local
+        port:
+          number: 3000
+  - match:
+      - uri:
+          prefix: /dts/grafana
+    route:
+      - destination:
+          host: grafana.{{ .Release.Namespace }}.svc.cluster.local
+          port:
+            number: 3000

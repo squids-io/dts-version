@@ -1,0 +1,480 @@
+---
+# Source: istio/templates/auth.yaml
+kind: ConfigMap
+apiVersion: v1
+data:
+  conf.sql: |
+      INSERT INTO `casbin_rule` VALUES ('p','anonymous','api','/dts','GET','Y','',''),
+                                     ('p','anonymous','api','/dts/grafana','POST','Y','',''),
+                                     ('p','anonymous','api','/api/motion','GET','Y','',''),
+                                     ('p','anonymous','api','/api/motion','POST','Y','',''),
+                                     ('p','anonymous','api','/api/motion','PUT','Y','',''),
+                                     ('p','anonymous','api','/api/motion','DELETE','Y','','');
+
+# 3.13.10开始每个版本新增的权限新加一个conf.sql,例如conf01.conf、conf02.sql、conf03.sql以此类推
+# auth-config-v0.0.1 configmap annotations:history-sql-file: '{"conf.sql":true}' 这边会记录历史的sql，执行过的将不再重复执行
+# casbin sql语句顺序往下面加，不要在上面做修改删除新增操作，会影响adminUser的权限
+# user,department,admin 这三个角色的权限会走继承关系，adminUser是单独的，需要单独给adminUser加权限
+metadata:
+  name: auth-config-v0.0.1
+  namespace: dts
+  annotations:
+    history-sql-file: '{"conf.sql": true}'
+  labels:
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-webserver
+---
+# Source: istio/templates/auth.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: dts
+  annotations:
+  labels:
+    app.kubernetes.io/name: auth
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-webserver
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: auth
+  ports:
+    - name: http-auth
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+    - name: http-user
+      port: 9096
+      protocol: TCP
+      targetPort: 9096
+---
+# Source: istio/templates/web_ingress.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dts-ingressgateway
+  namespace: dts
+  annotations:
+  labels:
+    app: dts-ingressgateway
+spec:
+  type: ClusterIP
+  selector:
+    app: dts-ingressgateway
+  ports:
+    - name: http-web
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+---
+# Source: istio/templates/auth.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: dts
+  labels:
+    app.kubernetes.io/name: auth
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      name: auth
+      annotations:
+        sidecar.istio.io/inject: "y"
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: auth
+        qfusion/useIstio: "true"
+    spec:
+      containers:
+        - args:
+            - --dbAddr=$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@tcp(qfusion-cmdb0.qfusion:3306)/webserver?parseTime=true&timeout=5s&readTimeout=6s&charset=utf8&parseTime=true&loc=Local
+            - --destAddr=http://dts-ingressgateway
+            - --innerAddr=0.0.0.0:9096
+            - --captchaCheck=true
+            - --homeUrl=/dts
+            - --logtostderr
+            - --casServer=https://auth.songshanghu-x86-2.com/authui
+            - --skipVerify=true
+            - --hcsToken=true
+            - --paramWhiteList=homeUrl,state,service,region,home,origin
+            - --defaultDepartment=mo
+            - --useRsaClient=true
+            - --hcsDepartment=true
+            - --sessionApiPrefix=/prometheus
+            - --whiteListPrefix=/prometheus
+          env:
+            - name: NAMESPACE
+              value: dts
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: cmdb0-root-suffix
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: cmdb0-root-suffix
+          image: k8smaster.qfusion.irds/irds/auth:v1.0
+          imagePullPolicy: IfNotPresent
+          name: auth
+          ports:
+            - containerPort: 9095
+              name: auth
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /auth/v1/reload
+              port: 9095
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /etc/conf
+              name: auth-config
+            - mountPath: /etc/localtime
+              name: localtime
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: dboperator
+      serviceAccountName: dboperator
+      terminationGracePeriodSeconds: 0
+      tolerations:
+        - effect: NoExecute
+          key: qfusion/master
+          operator: Exists
+        - effect: NoExecute
+          key: node-role.kubernetes.io/master
+          operator: Exists
+          tolerationSeconds: 60
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: auth-config-v0.0.1
+          name: auth-config
+        - hostPath:
+            path: /usr/share/zoneinfo/Asia/Shanghai
+            type: ""
+          name: localtime
+---
+# Source: istio/templates/web_ingress.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dts-ingressgateway
+  namespace: dts
+  labels:
+    app: dts-ingressgateway
+    operator.istio.io/component: "dts-IngressGateways"
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: dts-ingressgateway
+  strategy:
+    rollingUpdate:
+      maxSurge: 100%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dts-ingressgateway
+      annotations:
+        prometheus.io/port: "15020"
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/stats/prometheus"
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        runAsUser: 1337
+        runAsGroup: 1337
+        runAsNonRoot: true
+        fsGroup: 1337
+      tolerations:
+        - effect: NoExecute
+          key: qfusion/master
+          operator: Exists
+        - effect: NoExecute
+          key: node-role.kubernetes.io/master
+          operator: Exists
+          tolerationSeconds: 60
+      containers:
+        - name: istio-proxy
+          image: "k8smaster.qfusion.irds/irds/proxyv2:1.17.2-distroless"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP
+              name: qfusion-web
+          args:
+            - proxy
+            - router
+            - --domain
+            - $(POD_NAMESPACE).svc.cluster.local
+            - --proxyLogLevel=warning
+            - --proxyComponentLogLevel=misc:error
+            - --log_output_level=default:info
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          readinessProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /healthz/ready
+              port: 15021
+              scheme: HTTP
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 1024Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          env:
+            - name: JWT_POLICY
+              value: first-party-jwt
+            - name: PILOT_CERT_PROVIDER
+              value: istiod
+            - name: CA_ADDR
+              value: istiod.qfusion.svc:15012
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: INSTANCE_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: ISTIO_META_WORKLOAD_NAME
+              value: web-ingressgateway
+            - name: ISTIO_META_OWNER
+              value: kubernetes://apis/apps/v1/namespaces/qfusion/deployments/istio-ingressgateway
+            - name: ISTIO_META_MESH_ID
+              value: "cluster.local"
+            - name: TRUST_DOMAIN
+              value: "cluster.local"
+            - name: ISTIO_META_UNPRIVILEGED_POD
+              value: "true"
+            - name: ISTIO_AGENT_DUAL_STACK
+              value: "true"
+            - name: ISTIO_META_CLUSTER_ID
+              value: "Kubernetes"
+            - name: ISTIO_META_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: workload-socket
+              mountPath: /var/run/secrets/workload-spiffe-uds
+            - name: credential-socket
+              mountPath: /var/run/secrets/credential-uds
+            - name: workload-certs
+              mountPath: /var/run/secrets/workload-spiffe-credentials
+            - name: istio-envoy
+              mountPath: /etc/istio/proxy
+            - name: config-volume
+              mountPath: /etc/istio/config
+            - mountPath: /var/run/secrets/istio
+              name: istiod-ca-cert
+            - mountPath: /var/lib/istio/data
+              name: istio-data
+            - name: podinfo
+              mountPath: /etc/istio/pod
+            - name: ingressgateway-certs
+              mountPath: "/etc/istio/ingressgateway-certs"
+              readOnly: true
+            - name: ingressgateway-ca-certs
+              mountPath: "/etc/istio/ingressgateway-ca-certs"
+              readOnly: true
+      volumes:
+        - emptyDir: {}
+          name: workload-socket
+        - emptyDir: {}
+          name: credential-socket
+        - emptyDir: {}
+          name: workload-certs
+        - name: istiod-ca-cert
+          configMap:
+            defaultMode: 420
+            name: istio-ca-root-cert
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: "labels"
+                fieldRef:
+                  fieldPath: metadata.labels
+              - path: "annotations"
+                fieldRef:
+                  fieldPath: metadata.annotations
+        - name: istio-envoy
+          emptyDir: {}
+        - name: istio-data
+          emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: istio
+            optional: true
+        - name: ingressgateway-certs
+          secret:
+            secretName: "istio-ingressgateway-certs"
+            optional: true
+        - name: ingressgateway-ca-certs
+          secret:
+            secretName: "istio-ingressgateway-ca-certs"
+            optional: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      serviceAccount: dboperator
+      serviceAccountName: dboperator
+      terminationGracePeriodSeconds: 0
+---
+# Source: istio/templates/gateway.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  generation: 1
+  labels:
+    kiali_wizard: web-Gateway
+  name: webserver
+  namespace: dts
+spec:
+  selector:
+    app: dts-ingressgateway
+  servers:
+  - hosts:
+    - '*'
+    port:
+      name: http-web
+      number: 80
+      protocol: HTTP
+---
+# Source: istio/templates/gen_all_vs.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: dts
+  namespace: dts
+  labels:
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-istio
+spec:
+  hosts:
+    - '*'
+  gateways:
+  - qfusion/auth
+  http:
+  - match:
+    - uri:
+        prefix: /dts/grafana
+    route:
+    - destination:
+        host: auth.dts.svc.cluster.local
+        port:
+          number: 9095
+  - match:
+    - uri:
+        prefix: /dts
+    - uri:
+        prefix: /upload
+    - uri:
+        prefix: /*.(jpg|png)
+    route:
+    - destination:
+        host: dts-ui.dts.svc.cluster.local
+        port:
+          number: 8080
+  - match:
+    - uri:
+        prefix: /api/motion
+    route:
+    - destination:
+        host: auth.dts.svc.cluster.local
+        port:
+          number: 9095
+---
+# Source: istio/templates/gen_all_vs.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: dts-api-server
+  namespace: dts
+  labels:
+    install.woqutech.com/managed-by: qfusion-installer-operator
+    install.woqutech.com/package: qfusion-istio
+spec:
+  hosts:
+    - '*'
+  gateways:
+  - webserver
+  http:
+  - match:
+    - uri:
+        prefix: /api/motion
+    route:
+    - destination:
+        host: dts-api-server.dts.svc.cluster.local
+        port:
+          number: 3000
+  - match:
+      - uri:
+          prefix: /dts/grafana
+    route:
+      - destination:
+          host: grafana.dts.svc.cluster.local
+          port:
+            number: 3000

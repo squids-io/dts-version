@@ -17,6 +17,7 @@ spec:
       name: monitor
       labels:
         app.kubernetes.io/name: monitor
+        qfusion/useIstio: "true"
     spec:
       serviceAccountName: monitor
       securityContext:
@@ -85,7 +86,7 @@ spec:
               mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/phoenix/monitor
-            - name: data
+            - name: dts-data
               mountPath: /monitor/data
             - name: shared-conf
               mountPath: /dts-conf
@@ -132,7 +133,7 @@ spec:
           volumeMounts:
             - name: monitor-conf
               mountPath: /etc/prometheus
-            - name: data
+            - name: dts-data
               mountPath: /prometheus/data
             - name: shared-conf
               mountPath: /dts-conf
@@ -156,7 +157,7 @@ spec:
               mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/alertmanager
-            - name: data
+            - name: dts-data
               mountPath: /alertmanager/data
             - name: shared-conf
               mountPath: /dts-conf
@@ -197,7 +198,7 @@ spec:
     - apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: data
+        name: dts-data
         namespace: {{.Release.Namespace}}
       spec:
         storageClassName: csi-localpv

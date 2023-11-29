@@ -38,7 +38,7 @@ phoenix:
 dbmotion:
   public:
     ip: 127.0.0.1
-  webAddr: http://dts-api-server:3000
+  webAddr: http://dts-ingressgateway:80
 
 serviceAccount:
   # Specifies whether a service account should be created
