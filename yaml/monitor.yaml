@@ -1344,16 +1344,3 @@ spec:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master
           operator: Exists
-  volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: dts-data
-        namespace: dts
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 200Gi

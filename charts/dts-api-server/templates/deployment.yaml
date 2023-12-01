@@ -41,8 +41,8 @@ spec:
           env:
             - name: DBMOTION_IMAGE
               value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.image.name }}:{{ .Values.api.image.tag }}
-            - name: KAFKA_IMAGE
-              value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.kafkaImage.name }}:{{ .Values.api.kafkaImage.tag }}
+            - name: DBMOTION_BINLOG_CACHE_ADDR
+              value: "PLAINTEXT://0.0.0.0:9092"
             - name: DBMOTION_INIT_IMAGE
               value: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.initImage.name }}:{{ .Values.api.initImage.tag }}
             - name: DBMOTION_WEB_ADDR
@@ -52,7 +52,7 @@ spec:
             - name: DBMOTION_GORM_DEBUG
               value: "yes"
             - name: SERVER_MODE
-              value: "PROXY"
+              value: "SAAS"
             - name: K8S_NAMESPACE
               value: "dts"
             - name: NODE_SELECTOR_KEY
@@ -92,7 +92,7 @@ spec:
             - name: ELASTICSEARCH_IDX
               value: "qfrds-dbmotion.log*"
             - name: SAAS_MODE
-              value: "HCS"
+              value: "SAAS"
             - name: CMDB_URI
               value: {{  .Values.cmdbUri }}
           volumeMounts:
@@ -107,6 +107,41 @@ spec:
             - name: grpc
               containerPort: 3001
               protocol: TCP
+        - env:
+            - name: KAFKA_LISTENERS
+              value: PLAINTEXT://0.0.0.0:9092
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: PLAINTEXT://:9092
+            - name: KAFKA_LOG_DIRS
+              value: /kafka/kf
+            - name: ZOOKEEPER_DATA__DIR
+              value: /kafka/zk
+          image: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.kafkaImage.name }}:{{ .Values.api.kafkaImage.tag }}
+          imagePullPolicy: Always
+          name: kafka
+          ports:
+            - containerPort: 9092
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /kafka
+              name: data
+            - mountPath: /etc/timezone
+              name: timezone
+              subPath: timezone
+            - mountPath: /etc/localtime
+              name: localtime
       volumes:
         - name: timezone
           configMap:

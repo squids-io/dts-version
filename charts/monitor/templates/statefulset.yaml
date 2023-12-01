@@ -194,16 +194,3 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-  volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: dts-data
-        namespace: {{.Release.Namespace}}
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ .Values.prometheus.pvcSize }}

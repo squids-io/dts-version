@@ -1,100 +1,17 @@
----
-# Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: v1
-kind: ServiceAccount
+kind: PersistentVolumeClaim
 metadata:
-  name: dboperator
-  namespace: dts
----
-# Source: dts-api-server/templates/secret.yaml
-# Source: Secret.yaml
-apiVersion: v1
-data:
-  password: XXX
-  username: XXX
-kind: Secret
-metadata:
-  labels:
-    AppName: qfusion-cmdb
-    CreatedBy: woqutech.com
-    DBBranch: mysql5.7
-    DBType: Database
-    TenantId: 847798ee3db44716b6357b04e5a55c16
-    app.kubernetes.io/instance: qfusion-mysqlcluster
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: qfusion-cmdb
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: mysqlcluster-0.1.0
-    installer.woqutech.com/managed-by: qfusion-installer-operator
-    installer.woqutech.com/package: qfusion-mysqlcluster
-  name: cmdb0-root-suffix
-  namespace: dts
-type: Opaque
----
-# Source: dts-api-server/templates/configmap.yaml
-apiVersion: v1
-data:
-  timezone: |
-    Asia/Shanghai
-kind: ConfigMap
-metadata:
-  name: timezone
-  namespace: dts
----
-# Source: dts-api-server/templates/serviceaccount.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: dts-admin
-  annotations:
-    rbac.authorization.k8s.io/auroupdate: "true"
-  labels:
-    kubernets.io/bootstrapping: "rbac-defaults"
-rules:
-- apiGroups:
-    - '*'
-  resources:
-    - '*'
-  verbs:
-    - '*'
-- nonResourceURLs:
-    - '*'
-  verbs:
-    - '*'
----
-# Source: dts-api-server/templates/serviceaccount.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: dboperator-dts
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: dts-admin
-subjects:
-  - kind: ServiceAccount
-    name: dboperator
-    namespace: dts
----
-# Source: dts-api-server/templates/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: dts-api-server
+  name: data
   namespace: dts
 spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: dts-api-server
-  ports:
-    - name: http
-      port: 3000
-      targetPort: 3000
-    - name: grpc
-      port: 3001
-      targetPort: 3001
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+  storageClassName: csi-localpv
+  volumeMode: Filesystem
 ---
-# Source: dts-api-server/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -151,8 +68,8 @@ spec:
           env:
             - name: DBMOTION_IMAGE
               value: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
-            - name: KAFKA_IMAGE
-              value: k8smaster.qfusion.irds/irds/kafka:hcs-oem
+            - name: DBMOTION_BINLOG_CACHE_ADDR
+              value: "PLAINTEXT://0.0.0.0:9092"
             - name: DBMOTION_INIT_IMAGE
               value: k8smaster.qfusion.irds/irds/alpine:3.18.2
             - name: DBMOTION_WEB_ADDR
@@ -162,7 +79,7 @@ spec:
             - name: DBMOTION_GORM_DEBUG
               value: "yes"
             - name: SERVER_MODE
-              value: "PROXY"
+              value: "SAAS"
             - name: K8S_NAMESPACE
               value: "dts"
             - name: NODE_SELECTOR_KEY
@@ -202,7 +119,7 @@ spec:
             - name: ELASTICSEARCH_IDX
               value: "qfrds-dbmotion.log*"
             - name: SAAS_MODE
-              value: "HCS"
+              value: "SAAS"
             - name: CMDB_URI
               value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/webserver
           volumeMounts:
@@ -217,6 +134,41 @@ spec:
             - name: grpc
               containerPort: 3001
               protocol: TCP
+        - env:
+            - name: KAFKA_LISTENERS
+              value: PLAINTEXT://0.0.0.0:9092
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: PLAINTEXT://:9092
+            - name: KAFKA_LOG_DIRS
+              value: /kafka/kf
+            - name: ZOOKEEPER_DATA__DIR
+              value: /kafka/zk
+          image: k8smaster.qfusion.irds/irds/kafka:hcs-oem
+          imagePullPolicy: Always
+          name: kafka
+          ports:
+            - containerPort: 9092
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /kafka
+              name: data
+            - mountPath: /etc/timezone
+              name: timezone
+              subPath: timezone
+            - mountPath: /etc/localtime
+              name: localtime
       volumes:
         - name: timezone
           configMap:
@@ -226,3 +178,6 @@ spec:
             path: /etc/localtime
         - name: log-volume
           emptyDir: { }
+        - name: data
+          persistentVolumeClaim:
+            claimName: data

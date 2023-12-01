@@ -50,6 +50,21 @@ metadata:
   name: timezone
   namespace: dts
 ---
+# Source: dts-api-server/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data
+  namespace: dts
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+  storageClassName: csi-localpv
+  volumeMode: Filesystem
+---
 # Source: dts-api-server/templates/serviceaccount.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -160,8 +175,8 @@ spec:
           env:
             - name: DBMOTION_IMAGE
               value: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
-            - name: KAFKA_IMAGE
-              value: k8smaster.qfusion.irds/irds/kafka:hcs-oem
+            - name: DBMOTION_BINLOG_CACHE_ADDR
+              value: "PLAINTEXT://0.0.0.0:9092"
             - name: DBMOTION_INIT_IMAGE
               value: k8smaster.qfusion.irds/irds/alpine:3.18.2
             - name: DBMOTION_WEB_ADDR
@@ -171,7 +186,7 @@ spec:
             - name: DBMOTION_GORM_DEBUG
               value: "yes"
             - name: SERVER_MODE
-              value: "PROXY"
+              value: "SAAS"
             - name: K8S_NAMESPACE
               value: "dts"
             - name: NODE_SELECTOR_KEY
@@ -211,7 +226,7 @@ spec:
             - name: ELASTICSEARCH_IDX
               value: "qfrds-dbmotion.log*"
             - name: SAAS_MODE
-              value: "HCS"
+              value: "SAAS"
             - name: CMDB_URI
               value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/webserver
           volumeMounts:
@@ -226,6 +241,41 @@ spec:
             - name: grpc
               containerPort: 3001
               protocol: TCP
+        - env:
+            - name: KAFKA_LISTENERS
+              value: PLAINTEXT://0.0.0.0:9092
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: PLAINTEXT://:9092
+            - name: KAFKA_LOG_DIRS
+              value: /kafka/kf
+            - name: ZOOKEEPER_DATA__DIR
+              value: /kafka/zk
+          image: k8smaster.qfusion.irds/irds/kafka:hcs-oem
+          imagePullPolicy: Always
+          name: kafka
+          ports:
+            - containerPort: 9092
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /kafka
+              name: data
+            - mountPath: /etc/timezone
+              name: timezone
+              subPath: timezone
+            - mountPath: /etc/localtime
+              name: localtime
       volumes:
         - name: timezone
           configMap:
@@ -5238,16 +5288,3 @@ spec:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master
           operator: Exists
-  volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: dts-data
-        namespace: dts
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 200Gi
