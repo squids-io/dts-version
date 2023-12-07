@@ -151,3 +151,6 @@ spec:
             path: /etc/localtime
         - name: log-volume
           emptyDir: { }
+        - name: data
+          persistentVolumeClaim:
+            claimName: data

@@ -8,7 +8,7 @@ global:
 image:
   pullPolicy: Always
   name: elasticsearch
-  tag: 6.8.18-hcs-oem
+  tag: 6.8.7
 
 init:
   image:
@@ -42,11 +42,11 @@ cleaner:
   image:
     pullPolicy: IfNotPresent
     name: efk-cleaner
-    tag: "v1.3.7"
+    tag: "v1.0.0"
   defaultExpire: 30
 configer:
   enabled: true
   image:
     pullPolicy: IfNotPresent
     name: elasticsearch-config-job
-    tag: v0.3.2-hcs-oem
+    tag: v0.3.1

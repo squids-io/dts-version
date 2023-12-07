@@ -1240,7 +1240,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: prometheus
-          image: k8smaster.qfusion.irds/irds/prometheus:v2.47.0
+          image: k8smaster.qfusion.irds/irds/prometheus:v2.26.1
           imagePullPolicy: IfNotPresent
           args:
             - --config.file=/etc/prometheus/prometheus.yml
@@ -1287,7 +1287,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: alertmanager
-          image: k8smaster.qfusion.irds/irds/alertmanager:v0.26.0
+          image: k8smaster.qfusion.irds/irds/alertmanager:v0.14.0
           imagePullPolicy: IfNotPresent
           args:
             - --storage.path=/alertmanager/data

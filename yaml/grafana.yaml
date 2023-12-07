@@ -2109,7 +2109,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: k8smaster.qfusion.irds/irds/grafana:10.1.1
+          image: k8smaster.qfusion.irds/irds/grafana:9.2.8
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0

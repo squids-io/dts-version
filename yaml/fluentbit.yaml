@@ -319,7 +319,7 @@ spec:
           operator: Exists
       containers:
         - name: fluent-bit
-          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
+          image: k8smaster.qfusion.irds/irds/fluent-bit:1.4.6
           imagePullPolicy: Always
           ports:
             - containerPort: 2020
@@ -420,7 +420,7 @@ spec:
           operator: Exists
       containers:
         - name: fluent-bit
-          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
+          image: k8smaster.qfusion.irds/irds/fluent-bit:1.4.6
           imagePullPolicy: Always
           ports:
             - containerPort: 2020

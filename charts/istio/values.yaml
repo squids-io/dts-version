@@ -20,7 +20,7 @@ auth:
     pullPolicy: IfNotPresent
     repository: ""
     name: auth
-    tag: "v1.0"
+    tag: "v0.0.2"
   casbinRules:
     includeAbout: true
     includeKibana: true
@@ -32,7 +32,7 @@ ingress:
     pullPolicy: IfNotPresent
     repository: ""
     name: proxyv2
-    tag: "1.17.2-distroless"
+    tag: "1.17.2"
 
 hcs: true
 # 在Pod上设置容忍 (Toleration)，意思是设置了容忍的Pod将可以容忍污点的存在，可以被调度到存在污点的Node上

@@ -43,12 +43,12 @@ prometheus:
     repository: irds
     name: prometheus
     pullPolicy: IfNotPresent
-    tag: v2.47.0
+    tag: v2.26.1
   storage:
     retentionTime: 10d
     minBlockDuration: 2h
     maxBlockDuration: 2h
-  pvcSize: 200Gi
+  pvcSize: 10Gi
 
 alertmanager:
   image:
@@ -56,7 +56,7 @@ alertmanager:
     repository: irds
     name: alertmanager
     pullPolicy: IfNotPresent
-    tag: v0.26.0
+    tag: v0.14.0
 
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious

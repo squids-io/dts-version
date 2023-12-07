@@ -19,8 +19,8 @@ metadata:
 # Source: Secret.yaml
 apiVersion: v1
 data:
-  password: XXX
-  username: XXX
+  password: bGV0c2cw
+  username: cm9vdA==
 kind: Secret
 metadata:
   labels:
@@ -61,7 +61,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 200Gi
+      storage: 10Gi
   storageClassName: csi-localpv
   volumeMode: Filesystem
 ---
@@ -285,6 +285,9 @@ spec:
             path: /etc/localtime
         - name: log-volume
           emptyDir: { }
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
 ---
 # Source: dts-ui/templates/configmap.yaml
 apiVersion: v1
@@ -694,7 +697,7 @@ spec:
             capabilities:
               add:
                 - IPC_LOCK
-          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.18-hcs-oem
+          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.7
           imagePullPolicy: Always
           env:
             - name: "CLUSTER_NAME"
@@ -761,7 +764,7 @@ spec:
       serviceAccountName: elasticsearch-logging
       containers:
         - name: runner
-          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.2-hcs-oem"
+          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.1"
           imagePullPolicy: IfNotPresent
           command: [ "/bin/bash",  "/config-es.sh" ]
           env:
@@ -803,7 +806,7 @@ spec:
               operator: Exists
           containers:
           - name: efk-cleaner
-            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.3.7
+            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.0.0
             imagePullPolicy: IfNotPresent
             volumeMounts:
             - name: config
@@ -1143,7 +1146,7 @@ spec:
           operator: Exists
       containers:
         - name: fluent-bit
-          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
+          image: k8smaster.qfusion.irds/irds/fluent-bit:1.4.6
           imagePullPolicy: Always
           ports:
             - containerPort: 2020
@@ -1244,7 +1247,7 @@ spec:
           operator: Exists
       containers:
         - name: fluent-bit
-          image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
+          image: k8smaster.qfusion.irds/irds/fluent-bit:1.4.6
           imagePullPolicy: Always
           ports:
             - containerPort: 2020
@@ -3409,7 +3412,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: k8smaster.qfusion.irds/irds/grafana:10.1.1
+          image: k8smaster.qfusion.irds/irds/grafana:9.2.8
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0
@@ -3487,6 +3490,63 @@ metadata:
   labels:
     install.woqutech.com/managed-by: qfusion-installer-operator
     install.woqutech.com/package: qfusion-webserver
+---
+# Source: istio/templates/configmap.yaml
+apiVersion: v1
+data:
+  mesh: |-
+    defaultConfig:
+      discoveryAddress: istiod.qfusion.svc:15012
+      proxyMetadata:
+        ISTIO_AGENT_DUAL_STACK: "true"
+      tracing: {}
+    discoverySelectors:
+    - matchLabels:
+        qf-istio-discovery: enabled
+    enablePrometheusMerge: true
+    rootNamespace: qfusion
+    trustDomain: cluster.local
+  meshNetworks: 'networks: {}'
+kind: ConfigMap
+metadata:
+  labels:
+    install.operator.istio.io/owning-resource: unknown
+    installer.woqutech.com/managed-by: qfusion-installer-operator
+    installer.woqutech.com/package: qfusion-istio
+    istio.io/rev: default
+    operator.istio.io/component: Pilot
+    release: istio
+  name: istio
+  namespace: dts
+---
+# Source: istio/templates/configmap.yaml
+apiVersion: v1
+data:
+  root-cert.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIIC/DCCAeSgAwIBAgIQRE8ftEPOEAPErgOaSp7vHDANBgkqhkiG9w0BAQsFADAY
+    MRYwFAYDVQQKEw1jbHVzdGVyLmxvY2FsMB4XDTIzMTIwNDA1NTg0MVoXDTMzMTIw
+    MTA1NTg0MVowGDEWMBQGA1UEChMNY2x1c3Rlci5sb2NhbDCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBAKi/auDCKQIsE/sUJR3JeFieonlBQv/ZFpFgk7f/
+    x4F0gcgI2Qd+LS3M18yAfhmR32hkTXK0M8JO26fYV1lrhwYxxFMOPpjSqmJgIh6q
+    ZgTrF/7dW1mTNCndIRC/HsbCn8djxvlypXIfuAnla9cHDBSq182TLUl+Z4/ypVSt
+    fQ6BpcODNDcU4uSmVmeAsgjn7EsGiXqgklIhvPGf3nPkAq8r5hC9xmVxvD5e7XuS
+    QuHe77IlrKlLpwpoPwuI0/Vt5FBabjYyqNcQo6XQT2whfk1IqeRQ3PQ8ebjt9m3o
+    c0fBypKV8GxTkcdPK68LTFGngZ4BDW0u987cmDvRW6f3bvsCAwEAAaNCMEAwDgYD
+    VR0PAQH/BAQDAgIEMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFFeByrOl87P9
+    tfX+uBaJrrRWhKd0MA0GCSqGSIb3DQEBCwUAA4IBAQCVKrTGQaix+t6JSkg3y6QU
+    xXcffLkuIjgU559e8qLTt0vTJ18ziGhcFVeK/p8ScAAmGU1UZHz+9PDb4TrtRRaz
+    k5iVmjzZMbCfTcU4M50M17PSSHFB/EZ0TIzFPq3544VLMWzVQWPqVE/7lmoyCEKE
+    M4xCEX89T0HO0hbaR/RV8Z3zjLSXZzFcjBuHyQBr+Osqzag8fCT4D8+DAAZiIg5X
+    c/W3MJ/AYjAZuG+v4z7dJXJUXE12x44ReAAV3YLnKT1Bonzt5DOlpAO2OjuvQbj4
+    +Lq/jm3NSKYsAGAsGpb3dtlHOElohdlZzZ00+37Rc4en3boPXis+bcJ731r2ZIeZ
+    -----END CERTIFICATE-----
+kind: ConfigMap
+metadata:
+  labels:
+    istio.io/config: "true"
+  name: istio-ca-root-cert
+  namespace: dts
 ---
 # Source: istio/templates/auth.yaml
 apiVersion: v1
@@ -3592,7 +3652,7 @@ spec:
                 secretKeyRef:
                   key: password
                   name: cmdb0-root-suffix
-          image: k8smaster.qfusion.irds/irds/auth:v1.0
+          image: k8smaster.qfusion.irds/irds/auth:v0.0.2
           imagePullPolicy: IfNotPresent
           name: auth
           ports:
@@ -3687,7 +3747,7 @@ spec:
           tolerationSeconds: 60
       containers:
         - name: istio-proxy
-          image: "k8smaster.qfusion.irds/irds/proxyv2:1.17.2-distroless"
+          image: "k8smaster.qfusion.irds/irds/proxyv2:1.17.2"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
@@ -5184,7 +5244,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: prometheus
-          image: k8smaster.qfusion.irds/irds/prometheus:v2.47.0
+          image: k8smaster.qfusion.irds/irds/prometheus:v2.26.1
           imagePullPolicy: IfNotPresent
           args:
             - --config.file=/etc/prometheus/prometheus.yml
@@ -5231,7 +5291,7 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
         - name: alertmanager
-          image: k8smaster.qfusion.irds/irds/alertmanager:v0.26.0
+          image: k8smaster.qfusion.irds/irds/alertmanager:v0.14.0
           imagePullPolicy: IfNotPresent
           args:
             - --storage.path=/alertmanager/data

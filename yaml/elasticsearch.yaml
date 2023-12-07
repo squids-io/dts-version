@@ -196,7 +196,7 @@ spec:
             capabilities:
               add:
                 - IPC_LOCK
-          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.18-hcs-oem
+          image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.7
           imagePullPolicy: Always
           env:
             - name: "CLUSTER_NAME"
@@ -263,7 +263,7 @@ spec:
       serviceAccountName: elasticsearch-logging
       containers:
         - name: runner
-          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.2-hcs-oem"
+          image: "k8smaster.qfusion.irds/irds/elasticsearch-config-job:v0.3.1"
           imagePullPolicy: IfNotPresent
           command: [ "/bin/bash",  "/config-es.sh" ]
           env:
@@ -305,7 +305,7 @@ spec:
               operator: Exists
           containers:
           - name: efk-cleaner
-            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.3.7
+            image: k8smaster.qfusion.irds/irds/efk-cleaner:v1.0.0
             imagePullPolicy: IfNotPresent
             volumeMounts:
             - name: config
