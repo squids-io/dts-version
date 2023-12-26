@@ -33,6 +33,16 @@ spec:
               value: "true"
             - name: GF_SECURITY_ALLOW_EMBEDDING
               value: "true"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-password
+                  key: GF_SECURITY_ADMIN_PASSWORD
+            - name: GF_SECURITY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-password
+                  key: GF_SECURITY_SECRET_KEY
           ports:
             - name: grafana
               containerPort: 3000
