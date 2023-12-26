@@ -108,6 +108,8 @@ spec:
               value: https
             - name: GIN_MODE
               value: release
+            - name: TMOUT
+              value: {{ .Values.tmout }}
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
