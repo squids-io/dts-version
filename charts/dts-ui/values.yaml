@@ -4,6 +4,8 @@
 
 replicaCount: 1
 
+tmout: "300"
+
 # register repo
 image:
   registry: k8smaster.qfusion.irds
