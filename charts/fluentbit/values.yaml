@@ -15,10 +15,9 @@ nameOverride: ""
 #    memory: 10Mi
 
 database:
-  nodeSelector: {}
-
-k8s:
-  nodeSelector: {}
+  nodeSelector:
+    namespace: dts
+    qfusion/node: ""
 
 filesystemLimitSize: 10G
 

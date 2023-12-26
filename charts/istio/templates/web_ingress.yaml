@@ -6,6 +6,7 @@ metadata:
   labels:
     app: dts-ingressgateway
     operator.istio.io/component: "dts-IngressGateways"
+    mgrds/run: "master"
 spec:
   progressDeadlineSeconds: 600
   replicas: {{ .Values.replicaCount }}

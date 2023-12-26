@@ -1,0 +1,79 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-system-allow-local-dts
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            mgrds/run: master
+            io.kubernetes.pod.namespace: dts
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+  egress:
+    - toEntities:
+        - host
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-system-allow-apiserver-to-hook-dts
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector:
+    matchLabels:
+      io.kubernetes.pod.namespace: kube-system
+      component: kube-apiserver
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: dts
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-system-allow-ds-dns-dts
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector:
+    matchLabels:
+      io.kubernetes.pod.namespace: kube-system
+      k8s-app: kube-dns
+  egress:
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            component: kube-apiserver
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            mgrds/run: master
+            io.kubernetes.pod.namespace: dts
+---
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: cluster-allow-global
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: AppName
+        operator: Exists
+      - key: io.kubernetes.pod.namespace
+        operator: Exists
+      - key: DBType
+        operator: Exists
+      - key: Type
+        operator: Exists
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            mgrds/run: master
+            io.kubernetes.pod.namespace: dts

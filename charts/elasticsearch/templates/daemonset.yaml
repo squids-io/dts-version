@@ -12,6 +12,8 @@ spec:
   template:
     metadata:
       labels:
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
         {{- include "elasticsearch.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.nodeSelector }}

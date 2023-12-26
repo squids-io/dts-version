@@ -1163,6 +1163,7 @@ spec:
       labels:
         app.kubernetes.io/name: monitor
         qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       serviceAccountName: monitor
       securityContext:

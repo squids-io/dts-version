@@ -2106,6 +2106,8 @@ spec:
       name: grafana
       labels:
         app.kubernetes.io/name: grafana
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       containers:
         - name: grafana

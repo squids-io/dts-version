@@ -175,6 +175,7 @@ spec:
       labels:
         app.kubernetes.io/name: dts-ui
         qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       affinity: 
         podAntiAffinity:

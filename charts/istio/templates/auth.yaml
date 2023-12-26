@@ -26,6 +26,7 @@ spec:
       labels:
         app.kubernetes.io/name: auth
         qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       {{- if gt $.Values.replicaCount 1.0 }}
       affinity:
@@ -53,6 +54,7 @@ spec:
             - --useRsaClient=true
             - --hcsDepartment=true
             - --sessionApiPrefix=/prometheus
+            - --sessionApiPrefix=/api/motion
             - --whiteListPrefix=/prometheus
             {{- end }}
           env:

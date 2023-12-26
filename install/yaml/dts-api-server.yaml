@@ -6,31 +6,6 @@ metadata:
   name: dboperator
   namespace: dts
 ---
-# Source: dts-api-server/templates/secret.yaml
-# Source: Secret.yaml
-apiVersion: v1
-data:
-  password: XXX
-  username: XXX
-kind: Secret
-metadata:
-  labels:
-    AppName: qfusion-cmdb
-    CreatedBy: woqutech.com
-    DBBranch: mysql5.7
-    DBType: Database
-    TenantId: 847798ee3db44716b6357b04e5a55c16
-    app.kubernetes.io/instance: qfusion-mysqlcluster
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: qfusion-cmdb
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: mysqlcluster-0.1.0
-    installer.woqutech.com/managed-by: qfusion-installer-operator
-    installer.woqutech.com/package: qfusion-mysqlcluster
-  name: cmdb0-root-suffix
-  namespace: dts
-type: Opaque
----
 # Source: dts-api-server/templates/configmap.yaml
 apiVersion: v1
 data:
@@ -118,6 +93,7 @@ spec:
       labels:
         app.kubernetes.io/name: dts-api-server
         qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       serviceAccountName: dboperator
       terminationGracePeriodSeconds: 30
@@ -145,7 +121,7 @@ spec:
           image: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
           imagePullPolicy: Always
           securityContext:
-            privileged: true
+            privileged: false
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           env:
@@ -205,11 +181,27 @@ spec:
               value: "HCS"
             - name: CMDB_URI
               value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/webserver
+            - name: MYSQL_URI
+              value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/dbmotion
+            - name: ROOT_CA
+              value: /etc/dbmotion-cert-ca.crt
+            - name: CLIENT_CERT_FILE
+              value: /etc/dbmotion-cert-dts-apiserver/tls.crt
+            - name: CLIENT_KEY_FILE
+              value: /etc/dbmotion-cert-dts-apiserver/tls.key
+            - name: HTTP_MODE
+              value: https
+            - name: GIN_MODE
+              value: release
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
             - name: log-volume
               mountPath: /dbmotion/log
+            - name: dbmotion-cert-dts-apiserver
+              mountPath: /etc/dbmotion-cert-dts-apiserver
+            - name: dbmotion-cert-ca
+              mountPath: /etc/dbmotion-cert-ca
           ports:
             - name: http
               containerPort: 3000
@@ -226,3 +218,9 @@ spec:
             path: /etc/localtime
         - name: log-volume
           emptyDir: { }
+        - name: dbmotion-cert-ca
+          secret:
+            secretName: dbmotion-cert-ca
+        - name: dbmotion-cert-dts-apiserver
+          secret:
+            secretName: dbmotion-cert-dts-apiserver

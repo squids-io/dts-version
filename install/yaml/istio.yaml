@@ -4,12 +4,12 @@ kind: ConfigMap
 apiVersion: v1
 data:
   conf.sql: |
-      INSERT INTO `casbin_rule` VALUES ('p','anonymous','api','/dts','GET','Y','',''),
-                                     ('p','anonymous','api','/dts/grafana','POST','Y','',''),
-                                     ('p','anonymous','api','/api/motion','GET','Y','',''),
-                                     ('p','anonymous','api','/api/motion','POST','Y','',''),
-                                     ('p','anonymous','api','/api/motion','PUT','Y','',''),
-                                     ('p','anonymous','api','/api/motion','DELETE','Y','','');
+      INSERT INTO casbin_rule (p_type, v0, v1, v2, v3, v4, v5, name) VALUES ('p','anonymous','api','/dts','GET','Y','',''),
+                                                                          ('p','anonymous','api','/dts/grafana','POST','Y','',''),
+                                                                          ('p','user','api','/api/motion','GET','Y','',''),
+                                                                          ('p','user','api','/api/motion','POST','Y','',''),
+                                                                          ('p','user','api','/api/motion','PUT','Y','',''),
+                                                                          ('p','user','api','/api/motion','DELETE','Y','','');
 
 # 3.13.10开始每个版本新增的权限新加一个conf.sql,例如conf01.conf、conf02.sql、conf03.sql以此类推
 # auth-config-v0.0.1 configmap annotations:history-sql-file: '{"conf.sql":true}' 这边会记录历史的sql，执行过的将不再重复执行
@@ -154,6 +154,7 @@ spec:
       labels:
         app.kubernetes.io/name: auth
         qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       containers:
         - args:
@@ -171,6 +172,7 @@ spec:
             - --useRsaClient=true
             - --hcsDepartment=true
             - --sessionApiPrefix=/prometheus
+            - --sessionApiPrefix=/api/motion
             - --whiteListPrefix=/prometheus
           env:
             - name: NAMESPACE
@@ -243,6 +245,7 @@ metadata:
   labels:
     app: dts-ingressgateway
     operator.istio.io/component: "dts-IngressGateways"
+    mgrds/run: "master"
 spec:
   progressDeadlineSeconds: 600
   replicas: 1

@@ -1,0 +1,122 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: dts-allow-egress-in-master
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector:
+    matchLabels:
+      mgrds/run: master
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: dts
+  egress:
+    - toEndpoints:
+        - matchExpressions:
+            - key: AppName
+              operator: Exists
+            - key: io.kubernetes.pod.namespace
+              operator: Exists
+            - key: DBType
+              operator: Exists
+            - key: Type
+              operator: Exists
+
+    - toEndpoints:
+        - matchLabels:
+            component: kube-apiserver
+            io.kubernetes.pod.namespace: kube-system
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: dts
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: qfusion
+    - toEntities:
+        - world
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: api-proxy
+            io.kubernetes.pod.namespace: qfusion
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: dts-allow-egress-in-master-es
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: elasticsearch
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: elasticsearch
+            io.kubernetes.pod.namespace: dts
+    - fromEndpoints:
+        - matchLabels:
+            mgrds/run: master
+            io.kubernetes.pod.namespace: dts
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: fluentbit
+            io.kubernetes.pod.namespace: dts
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: istiod
+            io.kubernetes.pod.namespace: qfusion
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: dts-allow-egress-in-master-fluentbit
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: fluentbit
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: istiod
+            io.kubernetes.pod.namespace: qfusion
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: elasticsearch
+            io.kubernetes.pod.namespace: dts
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: dts-allow-egress-in-master-istio
+  namespace: {{.Release.Namespace}}
+spec:
+  endpointSelector:
+    matchLabels:
+      app: dts-ingressgateway
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: dts-ingressgateway
+            io.kubernetes.pod.namespace: dts
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: istiod
+            io.kubernetes.pod.namespace: qfusion

@@ -8,6 +8,8 @@ metadata:
   labels:
     {{- include "fluentbit.labels" . | nindent 4 }}
     type: database
+    qfusion/useIstio: "true"
+    mgrds/run: "master"
 spec:
   selector:
     matchLabels:
@@ -93,93 +95,4 @@ spec:
         - hostPath:
             path: /usr/share/zoneinfo/Asia/Shanghai
           name: localtime
-      serviceAccountName: fluent-bit
----
-# 采集k8s容器相关的日志
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: {{include "fluentbit.name" . }}-k8s
-  namespace: {{.Release.Namespace}}
-  labels:
-    {{- include "fluentbit.labels" . | nindent 4 }}
-    type: k8s
-spec:
-  selector:
-    matchLabels:
-      {{- include "fluentbit.selectorLabels" . | nindent 6 }}
-      type: k8s
-  template:
-    metadata:
-      labels:
-        {{- include "fluentbit.labels" . | nindent 8 }}
-        type: k8s
-    spec:
-      {{- with .Values.k8s.nodeSelector }}
-      nodeSelector: {{ toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations: {{ toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity: {{ toYaml . | nindent 8 }}
-      {{end}}
-      containers:
-        - name: fluent-bit
-          image: {{include "fluentbit.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with .Values.resources }}
-          resources: {{ toYaml . | nindent 12 }}
-          {{- end }}
-          ports:
-            - containerPort: 2020
-          command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit-k8s.conf"]
-          env:
-            - name: FLUENT_ELASTICSEARCH_HOST
-              value: {{ .Values.esHost | quote }}
-            - name: FLUENT_ELASTICSEARCH_PORT
-              value: {{ .Values.esPort | quote }}
-            - name: FLUENT_FILESYSTEM_LIMIT_SIZE
-              value: {{ .Values.filesystemLimitSize }}
-            - name: FLUENT_FILESYSTEM_PATH
-              value: /flb-storage/k8s
-            - name: FLUENT_CONTAINER_LOG_PARSER
-              value: {{ .Values.global.criType }}
-          volumeMounts:
-            - name: varlog
-              mountPath: /var/log
-            - name: varlibdockercontainers
-              mountPath: {{ .Values.containerDir }}
-              readOnly: true
-            - name: fluent-bit-config
-              mountPath: /fluent-bit/etc/
-            - name: limit
-              mountPath: /etc/security/limits.conf
-              subPath: limits
-            - mountPath: /etc/localtime
-              name: localtime
-            - mountPath: /flb-storage
-              name: storage
-      volumes:
-        - name: varlog
-          hostPath:
-            path: /var/log
-        - name: varlibdockercontainers
-          hostPath:
-            path: {{ .Values.containerDir }}
-        - name: fluent-bit-config
-          configMap:
-            name: {{include "fluentbit.name" . }}
-        - name: limit
-          configMap:
-            name: {{include "fluentbit.name" . }}
-            items:
-              - key: limits.conf
-                path: limits
-        - hostPath:
-            path: /usr/share/zoneinfo/Asia/Shanghai
-          name: localtime
-        - name: storage
-          hostPath:
-            path: {{.Values.global.dataDir}}/flb-storage
       serviceAccountName: fluent-bit

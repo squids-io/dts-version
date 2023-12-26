@@ -21,6 +21,7 @@ spec:
       labels:
         app.kubernetes.io/name: dts-api-server
         qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       serviceAccountName: dboperator
       terminationGracePeriodSeconds: 30
@@ -35,7 +36,7 @@ spec:
           image: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.image.name }}:{{ .Values.api.image.tag }}
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
           securityContext:
-            privileged: true
+            privileged: false
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           env:
@@ -95,11 +96,27 @@ spec:
               value: "HCS"
             - name: CMDB_URI
               value: {{  .Values.cmdbUri }}
+            - name: MYSQL_URI
+              value: {{ .Values.mysqlUri }}
+            - name: ROOT_CA
+              value: /etc/dbmotion-cert-ca.crt
+            - name: CLIENT_CERT_FILE
+              value: /etc/dbmotion-cert-dts-apiserver/tls.crt
+            - name: CLIENT_KEY_FILE
+              value: /etc/dbmotion-cert-dts-apiserver/tls.key
+            - name: HTTP_MODE
+              value: https
+            - name: GIN_MODE
+              value: release
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
             - name: log-volume
               mountPath: /dbmotion/log
+            - name: dbmotion-cert-dts-apiserver
+              mountPath: /etc/dbmotion-cert-dts-apiserver
+            - name: dbmotion-cert-ca
+              mountPath: /etc/dbmotion-cert-ca
           ports:
             - name: http
               containerPort: 3000
@@ -116,3 +133,9 @@ spec:
             path: /etc/localtime
         - name: log-volume
           emptyDir: { }
+        - name: dbmotion-cert-ca
+          secret:
+            secretName: dbmotion-cert-ca
+        - name: dbmotion-cert-dts-apiserver
+          secret:
+            secretName: dbmotion-cert-dts-apiserver

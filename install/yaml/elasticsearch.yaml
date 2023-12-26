@@ -168,6 +168,8 @@ spec:
   template:
     metadata:
       labels:
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
         app.kubernetes.io/name: elasticsearch
         app.kubernetes.io/instance: elasticsearch
     spec:
