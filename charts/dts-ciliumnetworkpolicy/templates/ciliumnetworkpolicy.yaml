@@ -13,6 +13,7 @@ spec:
             io.kubernetes.pod.namespace: kube-system
     - fromEntities:
         - host
+        - remote-node
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: dts
