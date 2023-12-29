@@ -37,3 +37,4 @@ esHost: elasticsearch-logging.dts.svc.cluster.local
 esPort: 9200
 kubeletPodsDir: /var/lib/kubelet/pods
 containerDir: /var/lib/docker/containers
+dbmotionLogDir: /opt/qfusion/localpv
