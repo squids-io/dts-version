@@ -116,9 +116,14 @@ spec:
             - name: log-volume
               mountPath: /dbmotion/log
             - name: dbmotion-cert-dts-apiserver
-              mountPath: /etc/dbmotion-cert-dts-apiserver
+              mountPath: /etc/dbmotion-cert-dts-apiserver/tls.crt
+              subPath: tls.crt
+            - name: dbmotion-cert-dts-apiserver
+              mountPath: /etc/dbmotion-cert-dts-apiserver/tls.key
+              subPath: tls.key
             - name: dbmotion-cert-ca
-              mountPath: /etc/dbmotion-cert-ca
+              mountPath: /etc/dbmotion-cert-ca/ca.crt
+              subPath: ca.crt
           ports:
             - name: http
               containerPort: 3000
@@ -138,6 +143,16 @@ spec:
         - name: dbmotion-cert-ca
           secret:
             secretName: dbmotion-cert-ca
+            defaultMode: 384
+            items:
+              - key: ca.crt
+                path: ca.crt
         - name: dbmotion-cert-dts-apiserver
           secret:
             secretName: dbmotion-cert-dts-apiserver
+            defaultMode: 384
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
