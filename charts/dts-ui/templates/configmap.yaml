@@ -18,7 +18,7 @@ data:
         include mime.types;
         default_type application/octet-stream;
         underscores_in_headers on;
-        access_log off;
+        access_log on;
         sendfile on;
         #tcp_nopush on;
 
