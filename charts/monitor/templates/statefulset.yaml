@@ -51,7 +51,7 @@ spec:
             - "--database-database={{ .Values.database.name }}"
             - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
-            - "--prom-url=http://prometheus:9090"
+            - "--prom-url=http://monitor:9090"
             - "--alert-url=http://alertmanager:9093"
             - "--tmpl-dir=/etc/alert/tmpl"
             - "--alerting-target-type-file-path=/etc/phoenix/conf/alerting-target-type.yml"
