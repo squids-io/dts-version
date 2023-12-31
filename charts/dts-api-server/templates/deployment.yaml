@@ -109,7 +109,9 @@ spec:
             - name: GIN_MODE
               value: release
             - name: TMOUT
-              value: {{ .Values.tmout }}
+              value: "{{ .Values.tmout }}"
+            - name: KFK_LOG_DIR
+              value: "/kafka:/dbmotion/log/kf"
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
