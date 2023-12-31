@@ -21,9 +21,7 @@ spec:
         mgrds/run: "master"
     spec:
       serviceAccountName: monitor
-      securityContext:
-        runAsUser: 0
-        fsGroup: 0
+      securityContext: {}
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
@@ -43,6 +41,10 @@ spec:
         - name: phoenix
           image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
           imagePullPolicy: {{ .Values.phoenix.image.pullPolicy }}
+          securityContext:
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
           command:
             - "/phoenix"
             - "--database-address={{ .Values.database.address }}"
