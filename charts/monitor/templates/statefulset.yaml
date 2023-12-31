@@ -43,7 +43,7 @@ spec:
         - name: phoenix
           image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
           imagePullPolicy: {{ .Values.phoenix.image.pullPolicy }}
-          args:
+          command:
             - "/phoenix"
             - "--database-address={{ .Values.database.address }}"
             - "--database-port={{ .Values.database.port }}"
