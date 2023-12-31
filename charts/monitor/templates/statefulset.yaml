@@ -21,9 +21,7 @@ spec:
         mgrds/run: "master"
     spec:
       serviceAccountName: monitor
-      securityContext:
-        runAsUser: 0
-        fsGroup: 0
+      securityContext: {}
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
@@ -43,7 +41,12 @@ spec:
         - name: phoenix
           image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
           imagePullPolicy: {{ .Values.phoenix.image.pullPolicy }}
-          args:
+          securityContext:
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+          command:
+            - "/phoenix"
             - "--database-address={{ .Values.database.address }}"
             - "--database-port={{ .Values.database.port }}"
             - "--database-username=$(DATABASE_USERNAME)"
@@ -51,7 +54,7 @@ spec:
             - "--database-database={{ .Values.database.name }}"
             - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
-            - "--prom-url=http://prometheus:9090"
+            - "--prom-url=http://monitor:9090"
             - "--alert-url=http://alertmanager:9093"
             - "--tmpl-dir=/etc/alert/tmpl"
             - "--alerting-target-type-file-path=/etc/phoenix/conf/alerting-target-type.yml"

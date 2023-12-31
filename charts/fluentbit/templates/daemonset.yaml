@@ -52,6 +52,8 @@ spec:
             - name: FLUENT_CONTAINER_LOG_PARSER
               value: {{ .Values.global.criType }}
           volumeMounts:
+            - name: dbmotionlog
+              mountPath: /opt/qfusion/localpv
             - name: varlog
               mountPath: /var/log
             - name: varlibpodcontainers
@@ -77,6 +79,9 @@ spec:
         - name: storage
           hostPath:
             path: {{.Values.global.dataDir}}/flb-storage
+        - name: dbmotionlog
+          hostPath:
+            path: {{ .Values.dbmotionLogDir }}
         - name: varlibpodcontainers
           hostPath:
             path: {{ .Values.kubeletPodsDir }}

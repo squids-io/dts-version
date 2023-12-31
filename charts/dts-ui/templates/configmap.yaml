@@ -25,6 +25,7 @@ data:
         ssl_session_cache shared:SSL:10m;
         ssl_session_timeout 10m;
         keepalive_timeout 70;
+        port_in_redirect off;
 
         # ...... 413 ......
         client_max_body_size 20m;
