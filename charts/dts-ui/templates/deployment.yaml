@@ -24,6 +24,10 @@ spec:
         - name: ui
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
           env:
             - name: TMOUT
               value: "{{ .Values.tmout }}"

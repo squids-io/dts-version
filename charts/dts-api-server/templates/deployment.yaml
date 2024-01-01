@@ -35,8 +35,6 @@ spec:
         - name: api
           image: {{ .Values.global.registry }}/{{ .Values.global.repository }}/{{ .Values.api.image.name }}:{{ .Values.api.image.tag }}
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
-          securityContext:
-            privileged: false
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           env:
@@ -133,6 +131,11 @@ spec:
             - name: grpc
               containerPort: 3001
               protocol: TCP
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
       volumes:
         - name: timezone
           configMap:
