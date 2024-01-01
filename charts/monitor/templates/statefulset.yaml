@@ -21,7 +21,8 @@ spec:
         mgrds/run: "master"
     spec:
       serviceAccountName: monitor
-      securityContext: {}
+      securityContext:
+        fsGroup: 1000
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
@@ -173,6 +174,7 @@ spec:
             name: phoenix-conf
         - name: monitor-conf
           configMap:
+            defaultMode: 384
             name: monitor-conf
         - name: alertmanager-tmpl
           configMap:
