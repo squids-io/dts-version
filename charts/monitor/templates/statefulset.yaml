@@ -32,7 +32,7 @@ spec:
             - -c
             - |
               cd /dts-monitor
-              cp * /dts-conf/
+              cp -p * /dts-conf/
           volumeMounts:
             - name: monitor-conf
               mountPath: /dts-monitor
@@ -174,7 +174,7 @@ spec:
             name: phoenix-conf
         - name: monitor-conf
           configMap:
-            defaultMode: 384
+            defaultMode: 432
             name: monitor-conf
         - name: alertmanager-tmpl
           configMap:
