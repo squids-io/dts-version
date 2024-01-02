@@ -97,7 +97,7 @@ spec:
             - name: MYSQL_URI
               value: {{ .Values.mysqlUri }}
             - name: ROOT_CA
-              value: /etc/dbmotion-cert-ca.crt
+              value: /etc/dbmotion-cert-ca/ca.crt
             - name: CLIENT_CERT_FILE
               value: /etc/dbmotion-cert-dts-apiserver/tls.crt
             - name: CLIENT_KEY_FILE
