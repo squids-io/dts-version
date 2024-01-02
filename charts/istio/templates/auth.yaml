@@ -57,7 +57,7 @@ spec:
             - --sessionApiPrefix=/api/motion
             - --whiteListPrefix=/prometheus
             - --csrfProtect=true
-            - --csrfWhitelist=/grafana
+            - --csrfWhitelist=/dts/grafana
             {{- end }}
           env:
             - name: NAMESPACE
