@@ -152,7 +152,7 @@ data:
         Name              tail
         Alias             es_log
         Tag               dbmotion.log
-        Path              /var/lib/kubelet/pods/*/volumes/kubernetes.io~empty-dir/log-volume/*/dbmotion.log
+        Path              /opt/qfusion/localpv/*/*/dbmotion.log
         Multiline         On
         Multiline_Flush   5
         Parser_Firstline  dbmotion_parser
@@ -176,7 +176,7 @@ data:
         Host            ${FLUENT_ELASTICSEARCH_HOST}
         Port            9200
         Logstash_Format On
-        Logstash_Prefix log
+        Logstash_Prefix dbmotion.log
         Include_Tag_Key Off
         Retry_Limit     False
         Generate_ID     on
@@ -285,6 +285,9 @@ spec:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master
           operator: Exists
+        - effect: NoSchedule
+          key: qfvmi/node
+          operator: Exists
       containers:
         - name: fluent-bit
           image: k8smaster.qfusion.irds/irds/fluent-bit:2.0.9.1-hcs-oem
@@ -304,6 +307,8 @@ spec:
             - name: FLUENT_CONTAINER_LOG_PARSER
               value: docker
           volumeMounts:
+            - name: dbmotionlog
+              mountPath: /opt/qfusion/localpv
             - name: varlog
               mountPath: /var/log
             - name: varlibpodcontainers
@@ -329,6 +334,9 @@ spec:
         - name: storage
           hostPath:
             path: /opt/dts/flb-storage
+        - name: dbmotionlog
+          hostPath:
+            path: /opt/qfusion/localpv
         - name: varlibpodcontainers
           hostPath:
             path: /var/lib/kubelet/pods

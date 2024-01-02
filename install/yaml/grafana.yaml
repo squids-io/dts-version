@@ -1,9 +1,20 @@
 ---
+# Source: grafana/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-password
+  namespace: dts
+data:
+  GF_SECURITY_ADMIN_PASSWORD: Q2xqc2xybDA2MjA=
+  GF_SECURITY_SECRET_KEY: U1cyWWN3VEliOXpwT09ob1BzTW0=
+---
 # Source: grafana/templates/grafana-cofig.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-provisioning
+  namespace: dts
 data:
   datasources.yaml: |
     # config file version
@@ -201,10 +212,10 @@ data:
       admin_user = admin
 
       # default admin password, can be changed before first start of grafana, or in profile settings
-      admin_password = Cljslrl0620
+      ;admin_password = ${GRAFANA_ADMIN_PASSWORD}
 
       # used for signing
-      secret_key = SW2YcwTIb9zpOOhoPsMm
+      ;secret_key = ${GRAFANA_SECRET_KEY}
 
       # disable gravatar profile images
       disable_gravatar = true
@@ -2122,6 +2133,16 @@ spec:
               value: "true"
             - name: GF_SECURITY_ALLOW_EMBEDDING
               value: "true"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-password
+                  key: GF_SECURITY_ADMIN_PASSWORD
+            - name: GF_SECURITY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-password
+                  key: GF_SECURITY_SECRET_KEY
           ports:
             - name: grafana
               containerPort: 3000

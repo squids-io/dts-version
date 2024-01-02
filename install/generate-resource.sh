@@ -25,6 +25,10 @@ password=`(kubectl -nqfusion get secret qfusion-cmdb0-root-suffix -oyaml | grep 
 sed "0,/  password: XXXXXX/s//${password}/" ./yaml/secret.yaml > ./yaml/secret.back.yaml
 mv ./yaml/secret.back.yaml  ./yaml/secret.yaml
 
+caBundle=`(kubectl -nqfusion get mutatingwebhookconfigurations qfusion-vmi-injector -oyaml | grep -m 1 caBundle:)`
+sed  "s/  caBundle: XXXXXX/${caBundle}/g" ./yaml/mutatingWebhookConfiguration.yaml > ./yaml/mutatingWebhookConfiguration.back.yaml
+mv ./yaml/mutatingWebhookConfiguration.back.yaml  ./yaml/mutatingWebhookConfiguration.yaml
+
 #update resource
 for file in namespace.yaml secret.yaml  dts-api-server.yaml  dts-ui.yaml  elasticsearch.yaml  fluentbit.yaml  grafana.yaml  istio.yaml  monitor.yaml
 do

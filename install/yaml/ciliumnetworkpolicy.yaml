@@ -40,7 +40,7 @@ spec:
         - matchLabels:
             io.kubernetes.pod.namespace: qfusion
     - toEntities:
-        - world
+        - cluster
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: api-proxy

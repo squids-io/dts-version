@@ -2,6 +2,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: dbmotion-root-ca
+  namespace: dts
 spec:
   commonName: dbmotion-root-ca
   duration: 262800h0m0s
@@ -32,6 +33,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: dbmotion-ca
+  namespace: dts
 spec:
   secretName: dbmotion-cert-ca
   duration: 262800h0m0s
@@ -53,6 +55,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: dbmotion-dts-task
+  namespace: dts
 spec:
   secretName: dbmotion-cert-dts-task
   duration: 262800h0m0s
@@ -75,6 +78,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: dbmotion-dts-apiserver
+  namespace: dts
 spec:
   secretName: dbmotion-cert-dts-apiserver
   duration: 262800h0m0s

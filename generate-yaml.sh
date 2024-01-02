@@ -13,4 +13,5 @@ helm template fluentbit charts/fluentbit -n dts > ./install/yaml/fluentbit.yaml
 cat ./charts/namespace.yaml >> ./install/yaml/namespace.yaml
 cat ./charts/secret.yaml >> ./install/yaml/secret.yaml
 cat ./charts/ciliumnetworkpolicy.yaml >> ./install/yaml/ciliumnetworkpolicy.yaml
+cat ./charts/mutatingWebhookConfiguration.yaml >> ./install/yaml/mutatingWebhookConfiguration.yaml
 cat ./charts/cert.yaml >> ./install/yaml/cert.yaml

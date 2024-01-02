@@ -25,6 +25,7 @@ metadata:
   name: monitor
   labels:
     name: monitor
+    namespace: {{ .Release.Namespace }}
     kubernetes.io/cluster-service: 'true'
 spec:
   ports:
@@ -48,6 +49,7 @@ metadata:
   name: phoenix
   labels:
     name: phoenix
+    namespace: {{ .Release.Namespace }}
     kubernetes.io/cluster-service: 'true'
 spec:
   ports:
@@ -70,6 +72,7 @@ kind: Service
 metadata:
   labels:
     name: alertmanager
+    namespace: {{ .Release.Namespace }}
     kubernetes.io/cluster-service: 'true'
   name: alertmanager
 spec:

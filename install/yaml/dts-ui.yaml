@@ -20,17 +20,24 @@ data:
         include mime.types;
         default_type application/octet-stream;
         underscores_in_headers on;
-
+        access_log on;
         sendfile on;
         #tcp_nopush on;
 
         ssl_session_cache shared:SSL:10m;
         ssl_session_timeout 10m;
         keepalive_timeout 70;
+        port_in_redirect off;
 
         # ...... 413 ......
         client_max_body_size 20m;
+        client_body_timeout 60;
         client_body_buffer_size 20m;
+        client_header_timeout 60;
+
+        send_timeout 36000;
+        client_header_buffer_size 1024k;
+        large_client_header_buffers 4 1024k;
 
         # ............... http ...........................
         # ...... Upgrade ............... close........................ nginx ..................... Connection ...... ''
@@ -41,6 +48,7 @@ data:
 
         server {
             listen 8080;
+            ssi off;
             # server_name localhost;
 
             add_header 'Access-Control-Allow-Origin' "$http_origin";
@@ -190,8 +198,15 @@ spec:
       
       containers:
         - name: ui
-          image: k8smaster.qfusion.irds/irds/dbmotion-ui:2310-hcs-oem
+          image: "k8smaster.qfusion.irds/irds/dbmotion-ui:2310-hcs-oem"
           imagePullPolicy: Always
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          env:
+            - name: TMOUT
+              value: "300"
           ports:
             - containerPort: 8080
           volumeMounts:

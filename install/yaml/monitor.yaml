@@ -1090,6 +1090,7 @@ metadata:
   name: monitor
   labels:
     name: monitor
+    namespace: dts
     kubernetes.io/cluster-service: 'true'
 spec:
   ports:
@@ -1109,6 +1110,7 @@ metadata:
   name: phoenix
   labels:
     name: phoenix
+    namespace: dts
     kubernetes.io/cluster-service: 'true'
 spec:
   ports:
@@ -1128,6 +1130,7 @@ kind: Service
 metadata:
   labels:
     name: alertmanager
+    namespace: dts
     kubernetes.io/cluster-service: 'true'
   name: alertmanager
 spec:
@@ -1167,8 +1170,7 @@ spec:
     spec:
       serviceAccountName: monitor
       securityContext:
-        runAsUser: 0
-        fsGroup: 0
+        fsGroup: 1000
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: dts-monitor-conf
@@ -1178,7 +1180,7 @@ spec:
             - -c
             - |
               cd /dts-monitor
-              cp * /dts-conf/
+              cp -p * /dts-conf/
           volumeMounts:
             - name: monitor-conf
               mountPath: /dts-monitor
@@ -1188,7 +1190,12 @@ spec:
         - name: phoenix
           image: k8smaster.qfusion.irds/irds/phoenix:1.4.7-dbmotion-hcs-oem
           imagePullPolicy: Always
-          args:
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          command:
+            - "/phoenix"
             - "--database-address=qfusion-cmdb0.qfusion"
             - "--database-port=3306"
             - "--database-username=$(DATABASE_USERNAME)"
@@ -1196,7 +1203,7 @@ spec:
             - "--database-database=dts_phoenix"
             - "--data-dir=/dts-conf"
             - "--rule-config=/rules.yml"
-            - "--prom-url=http://prometheus:9090"
+            - "--prom-url=http://monitor:9090"
             - "--alert-url=http://alertmanager:9093"
             - "--tmpl-dir=/etc/alert/tmpl"
             - "--alerting-target-type-file-path=/etc/phoenix/conf/alerting-target-type.yml"
@@ -1232,8 +1239,6 @@ spec:
               mountPath: /etc/alert/tmpl
             - name: monitor-conf
               mountPath: /etc/phoenix/monitor
-            - name: dts-data
-              mountPath: /monitor/data
             - name: shared-conf
               mountPath: /dts-conf
             - name: timezone
@@ -1317,6 +1322,7 @@ spec:
             name: phoenix-conf
         - name: monitor-conf
           configMap:
+            defaultMode: 432
             name: monitor-conf
         - name: alertmanager-tmpl
           configMap:

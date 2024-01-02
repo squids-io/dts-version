@@ -47,12 +47,14 @@ data:
 kind: ConfigMap
 metadata:
   name: elasticsearch
+  namespace: dts
 ---
 # Source: elasticsearch/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: elasticsearch-cleaner-config
+  namespace: dts
 data:
   config.yaml: |
     defaultExpire: 30
@@ -188,7 +190,7 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh","-c"," sysctl -w vm.max_map_count=262144 && chown -R 1000 /usr/share/elasticsearch/data"]
           securityContext:
-            privileged: false
+            privileged: true
           volumeMounts:
             - mountPath: /usr/share/elasticsearch/data
               name: storage
@@ -214,7 +216,7 @@ spec:
             - name: "NODE_DATA"
               value: "true"
             - name: "NUMBER_OF_MASTER"
-              value: "1"
+              value: "3"
             - name: ES_JAVA_OPTS
               value: -Xms2g -Xmx2g
           ports:

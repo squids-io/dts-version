@@ -120,8 +120,6 @@ spec:
         - name: api
           image: k8smaster.qfusion.irds/irds/dbmotion:2310-hcs-oem
           imagePullPolicy: Always
-          securityContext:
-            privileged: false
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           env:
@@ -193,15 +191,24 @@ spec:
               value: https
             - name: GIN_MODE
               value: release
+            - name: TMOUT
+              value: "300"
+            - name: KFK_LOG_DIR
+              value: "/kafka:/dbmotion/log/kf"
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
             - name: log-volume
               mountPath: /dbmotion/log
             - name: dbmotion-cert-dts-apiserver
-              mountPath: /etc/dbmotion-cert-dts-apiserver
+              mountPath: /etc/dbmotion-cert-dts-apiserver/tls.crt
+              subPath: tls.crt
+            - name: dbmotion-cert-dts-apiserver
+              mountPath: /etc/dbmotion-cert-dts-apiserver/tls.key
+              subPath: tls.key
             - name: dbmotion-cert-ca
-              mountPath: /etc/dbmotion-cert-ca
+              mountPath: /etc/dbmotion-cert-ca/ca.crt
+              subPath: ca.crt
           ports:
             - name: http
               containerPort: 3000
@@ -209,6 +216,11 @@ spec:
             - name: grpc
               containerPort: 3001
               protocol: TCP
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
       volumes:
         - name: timezone
           configMap:
@@ -221,6 +233,16 @@ spec:
         - name: dbmotion-cert-ca
           secret:
             secretName: dbmotion-cert-ca
+            defaultMode: 384
+            items:
+              - key: ca.crt
+                path: ca.crt
         - name: dbmotion-cert-dts-apiserver
           secret:
             secretName: dbmotion-cert-dts-apiserver
+            defaultMode: 384
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
