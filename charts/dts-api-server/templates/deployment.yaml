@@ -89,7 +89,9 @@ spec:
             - name: PHOENIX_ENDPOINT
               value: {{ .Values.phoenix.endpoint }}
             - name: ELASTICSEARCH_IDX
-              value: "qfrds-dbmotion.log*"
+              value: dbmotion.log-*
+            - name: ELASTICSEARCH_TAG
+              value: empty.dbmotion.log
             - name: SAAS_MODE
               value: "HCS"
             - name: CMDB_URI
