@@ -41,6 +41,8 @@ spec:
             capabilities:
               add:
                 - IPC_LOCK
+            runAsNonRoot: true
+            runAsUser: 1000
           image: {{ template "elasticsearch.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- with .Values.resources }}

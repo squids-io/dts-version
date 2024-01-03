@@ -24,8 +24,6 @@ spec:
         - name: grafana
           image: {{ .Values.global.registry }}/{{.Values.global.repository}}/{{ .Values.global.imageName }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          securityContext:
-            runAsUser: 0
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
               value: {{ .Values.adminPassword }}
