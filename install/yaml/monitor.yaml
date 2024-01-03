@@ -1181,6 +1181,7 @@ spec:
             - |
               cd /dts-monitor
               cp -p * /dts-conf/
+              chmod 777 /dts-data
           volumeMounts:
             - name: monitor-conf
               mountPath: /dts-monitor
@@ -1337,6 +1338,9 @@ spec:
         - name: localtime
           hostPath:
             path: /etc/localtime
+        - name: dts-data
+          hostPath:
+            path: /opt/qfusion/dts-monitor
       affinity: 
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -1351,16 +1355,3 @@ spec:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master
           operator: Exists
-  volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: dts-data
-        namespace: dts
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 200Gi

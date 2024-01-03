@@ -151,7 +151,7 @@ data:
     [INPUT]
         Name              tail
         Alias             es_log
-        Tag               dbmotion.log
+        Tag               empty.dbmotion.log
         Path              /opt/qfusion/localpv/*/*/dbmotion.log
         Multiline         On
         Multiline_Flush   5
@@ -168,23 +168,21 @@ data:
     * hard nofile 65534
     root soft nofile 65534
     root hard nofile 65534
-  output_es.conf: |+
+  output_es.conf: |
     [OUTPUT]
         Name            es
         Alias           es_log
-        Match           *
+        Match           *.dbmotion.log
         Host            ${FLUENT_ELASTICSEARCH_HOST}
         Port            9200
         Logstash_Format On
         Logstash_Prefix dbmotion.log
-        Include_Tag_Key Off
+        Include_Tag_Key on
         Retry_Limit     False
         Generate_ID     on
         Trace_Error     on
         storage.total_limit_size  ${FLUENT_FILESYSTEM_LIMIT_SIZE}
         Write_Operation upsert
-        Logstash_Prefix_Key tag
-  
   parsers_db.conf: |-
     [PARSER]
         Name        dbmotion_parser

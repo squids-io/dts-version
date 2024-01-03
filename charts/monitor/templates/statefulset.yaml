@@ -33,6 +33,7 @@ spec:
             - |
               cd /dts-monitor
               cp -p * /dts-conf/
+              chmod 777 /dts-data
           volumeMounts:
             - name: monitor-conf
               mountPath: /dts-monitor
@@ -189,6 +190,9 @@ spec:
         - name: localtime
           hostPath:
             path: /etc/localtime
+        - name: dts-data
+          hostPath:
+            path: /opt/qfusion/dts-monitor
       {{- with .Values.affinity }}
       affinity: {{toYaml .| nindent 8}}
       {{ end }}
@@ -198,16 +202,3 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
-  volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: dts-data
-        namespace: {{.Release.Namespace}}
-      spec:
-        storageClassName: csi-localpv
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ .Values.prometheus.pvcSize }}

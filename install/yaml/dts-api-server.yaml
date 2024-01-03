@@ -174,7 +174,9 @@ spec:
             - name: PHOENIX_ENDPOINT
               value: http://phoenix.dts:9091/api/v2/phoenix
             - name: ELASTICSEARCH_IDX
-              value: "qfrds-dbmotion.log*"
+              value: dbmotion.log-*
+            - name: ELASTICSEARCH_TAG
+              value: empty.dbmotion.log
             - name: SAAS_MODE
               value: "HCS"
             - name: CMDB_URI
@@ -182,7 +184,7 @@ spec:
             - name: MYSQL_URI
               value: $(MYSQL_USER_NAME):$(MYSQL_PASSWORD)@qfusion-cmdb0.qfusion:3306/dbmotion
             - name: ROOT_CA
-              value: /etc/dbmotion-cert-ca.crt
+              value: /etc/dbmotion-cert-ca/ca.crt
             - name: CLIENT_CERT_FILE
               value: /etc/dbmotion-cert-dts-apiserver/tls.crt
             - name: CLIENT_KEY_FILE
