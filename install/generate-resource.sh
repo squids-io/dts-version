@@ -30,7 +30,15 @@ sed  "s/  caBundle: XXXXXX/${caBundle}/g" ./yaml/mutatingWebhookConfiguration.ya
 mv ./yaml/mutatingWebhookConfiguration.back.yaml  ./yaml/mutatingWebhookConfiguration.yaml
 
 #update resource
-for file in  namespace.yaml  ciliumnetworkpolicy.yaml  secret.yaml cert.yaml mutatingWebhookConfiguration.yaml dts-api-server.yaml  dts-ui.yaml  elasticsearch.yaml  fluentbit.yaml  grafana.yaml  istio.yaml  monitor.yaml
+for file in  namespace.yaml secret.yaml cert.yaml mutatingWebhookConfiguration.yaml dts-api-server.yaml  dts-ui.yaml  elasticsearch.yaml  fluentbit.yaml  grafana.yaml  istio.yaml  monitor.yaml
+do
+    if echo "$file" | grep -q -E '\.yaml$'
+    then
+        kubectl apply -f  ./yaml/$file -ndts
+    fi
+done
+
+for file in ciliumnetworkpolicy.yaml
 do
     if echo "$file" | grep -q -E '\.yaml$'
     then
