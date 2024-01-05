@@ -39,6 +39,8 @@ spec:
               mountPath: /dts-monitor
             - name: shared-conf
               mountPath: /dts-conf
+            - name: dts-data
+              mountPath: /dts-data
       containers:
         - name: phoenix
           image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
