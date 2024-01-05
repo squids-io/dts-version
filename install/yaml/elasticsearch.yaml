@@ -200,6 +200,8 @@ spec:
             capabilities:
               add:
                 - IPC_LOCK
+            runAsNonRoot: true
+            runAsUser: 1000
           image: k8smaster.qfusion.irds/irds/elasticsearch:6.8.18-hcs-oem
           imagePullPolicy: Always
           env:

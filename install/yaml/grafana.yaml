@@ -2124,8 +2124,6 @@ spec:
         - name: grafana
           image: k8smaster.qfusion.irds/irds/grafana:10.1.1
           imagePullPolicy: IfNotPresent
-          securityContext:
-            runAsUser: 0
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
               value: admin

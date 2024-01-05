@@ -8,8 +8,6 @@ metadata:
   labels:
     {{- include "fluentbit.labels" . | nindent 4 }}
     type: database
-    qfusion/useIstio: "true"
-    mgrds/run: "master"
 spec:
   selector:
     matchLabels:
@@ -20,6 +18,8 @@ spec:
       labels:
         {{- include "fluentbit.labels" . | nindent 8 }}
         type: database
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       {{- with .Values.database.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}

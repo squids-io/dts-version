@@ -73,7 +73,7 @@ api:
   replicaCount: 1
   image:
     name: dbmotion
-    tag: "2310-hcs-oem"
+    tag: "hcs-oem"
     pullPolicy: Always
   kafkaImage:
     name: kafka

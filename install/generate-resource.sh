@@ -30,18 +30,11 @@ sed  "s/  caBundle: XXXXXX/${caBundle}/g" ./yaml/mutatingWebhookConfiguration.ya
 mv ./yaml/mutatingWebhookConfiguration.back.yaml  ./yaml/mutatingWebhookConfiguration.yaml
 
 #update resource
-for file in namespace.yaml secret.yaml  dts-api-server.yaml  dts-ui.yaml  elasticsearch.yaml  fluentbit.yaml  grafana.yaml  istio.yaml  monitor.yaml
+for file in  namespace.yaml  ciliumnetworkpolicy.yaml  secret.yaml cert.yaml mutatingWebhookConfiguration.yaml dts-api-server.yaml  dts-ui.yaml  elasticsearch.yaml  fluentbit.yaml  grafana.yaml  istio.yaml  monitor.yaml
 do
     if echo "$file" | grep -q -E '\.yaml$'
     then
         kubectl apply -f  ./yaml/$file
     fi
-done
-
-pvc_status=$(kubectl get pvc -n dts  -o=jsonpath="{.items[?(@.metadata.name == 'data')].status.phase}")
-while [ ! "$pvc_status" == "Bound" ]
-do
-  sleep 20
-  pvc_status=$(kubectl get pvc -n dts  -o=jsonpath="{.items[?(@.metadata.name == 'data')].status.phase}")
 done
 
