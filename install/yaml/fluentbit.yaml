@@ -255,8 +255,6 @@ metadata:
     app.kubernetes.io/version: "1.4.5"
     app.kubernetes.io/managed-by: Helm
     type: database
-    qfusion/useIstio: "true"
-    mgrds/run: "master"
 spec:
   selector:
     matchLabels:
@@ -272,6 +270,8 @@ spec:
         app.kubernetes.io/version: "1.4.5"
         app.kubernetes.io/managed-by: Helm
         type: database
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       nodeSelector: 
         namespace: dts
@@ -295,7 +295,7 @@ spec:
           command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit-db.conf"]
           env:
             - name: FLUENT_ELASTICSEARCH_HOST
-              value: "elasticsearch-logging.dts.svc.cluster.local"
+              value: "elasticsearch-logging.dts"
             - name: FLUENT_ELASTICSEARCH_PORT
               value: "9200"
             - name: FLUENT_FILESYSTEM_LIMIT_SIZE

@@ -9,7 +9,6 @@ image:
 
 monitorPort: 9090
 replicasCount: 1
-adminPassword: admin
 
 enableHttps: false
 
