@@ -5,6 +5,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   template:
+    metadata:
+      labels:
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       {{- with .Values.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 12 }}
@@ -26,5 +30,13 @@ spec:
               value: {{ template "elasticsearch.name" . }}-discovery
             - name: MAX_RESULT_WINDOW
               value: "50000"
+          volumeMounts:
+            - name: index-templates
+              mountPath: /log-templates/
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: {{template "elasticsearch.name" . }}-index-templates
+          name: index-templates
       restartPolicy: OnFailure
   backoffLimit: 5
