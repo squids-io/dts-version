@@ -59,6 +59,7 @@ spec:
             - --sessionTimeout=5m
             - --csrfProtect=true
             - --csrfWhitelist=/dts/grafana
+            - --csrfPath=/api/motion
             {{- end }}
           env:
             - name: NAMESPACE

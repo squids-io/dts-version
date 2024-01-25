@@ -198,7 +198,7 @@ spec:
       
       containers:
         - name: ui
-          image: "k8smaster.qfusion.irds/irds/dbmotion-ui:2310-hcs-oem"
+          image: "k8smaster.qfusion.irds/irds/dbmotion-ui:hcs-oem"
           imagePullPolicy: Always
           securityContext:
             runAsGroup: 1000

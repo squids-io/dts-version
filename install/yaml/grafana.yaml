@@ -212,7 +212,7 @@ data:
       admin_user = admin
 
       # default admin password, can be changed before first start of grafana, or in profile settings
-      ;admin_password = ${GRAFANA_ADMIN_PASSWORD}
+      admin_password =
 
       # used for signing
       ;secret_key = ${GRAFANA_SECRET_KEY}
@@ -2124,11 +2124,7 @@ spec:
         - name: grafana
           image: k8smaster.qfusion.irds/irds/grafana:10.1.1
           imagePullPolicy: IfNotPresent
-          securityContext:
-            runAsUser: 0
           env:
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              value: admin
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "true"
             - name: GF_SECURITY_ALLOW_EMBEDDING
