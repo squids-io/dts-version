@@ -33,6 +33,14 @@ metadata:
   name: {{template "elasticsearch.name" . }}
   namespace: {{ .Release.Namespace }}
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{template "elasticsearch.name" . }}-index-templates
+  namespace: {{ .Release.Namespace }}
+data:
+{{ (.Files.Glob "log-templates/*.json").AsConfig | indent 2 }}
+---
 {{ if .Values.cleaner.enabled -}}
 apiVersion: v1
 kind: ConfigMap
@@ -43,11 +51,3 @@ data:
   config.yaml: |
     defaultExpire: {{.Values.cleaner.defaultExpire}}
 {{- end -}}
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: {{template "elasticsearch.name" . }}-index-templates
-  namespace: {{ .Release.Namespace }}
-data:
-{{ (.Files.Glob "log-templates/*.json").AsConfig | indent 2 }}
