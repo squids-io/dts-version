@@ -60,6 +60,7 @@ spec:
             - --csrfProtect=true
             - --csrfWhitelist=/dts/grafana
             - --csrfPath=/api/motion
+            - --csrfTokenName=_dts_csrf_token
             {{- end }}
           env:
             - name: NAMESPACE
