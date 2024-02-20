@@ -50,6 +50,84 @@ metadata:
   namespace: dts
 ---
 # Source: elasticsearch/templates/configmap.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: elasticsearch-index-templates
+  namespace: dts
+data:
+  qfrds-template.json: |
+    {
+      "settings": {
+        "number_of_shards": 1,
+        "index.max_result_window" : 50000,
+        "index.mapping.ignore_malformed": true
+      },
+      "mappings": {
+        "_doc": {
+          "dynamic_date_formats": ["strict_date_optional_time",  "yyyy/MM/dd HH:mm:ss Z||yyyy/MM/dd Z||yyyy-MM-dd'T'HH:mm:ss z||yyyy-mm-dd'T'HH:mm:ssZ"],
+          "dynamic_templates": [
+            {
+              "strings": {
+                "match_mapping_type": "string",
+                "mapping": {
+                  "type": "keyword",
+                  "norms": false,
+                  "index": true
+                }
+              }
+            }
+          ],
+          "properties": {
+            "appName": {
+              "type": "keyword",
+              "norms": false,
+              "index": true
+            },
+            "podName": {
+              "type": "keyword",
+              "norms": false,
+              "index": true
+            },
+            "podNamespace": {
+              "type": "keyword",
+              "norms": false,
+              "index": true
+            },
+            "container": {
+              "type": "keyword",
+              "norms": false,
+              "index": true
+            },
+            "log": {
+              "type": "text",
+              "norms": false,
+              "index": true
+            },
+            "statement": {
+              "type": "text",
+              "norms": false,
+              "index": true
+            },
+            "sqltext": {
+              "type": "text",
+              "norms": false,
+              "index": true
+            },
+            "tag": {
+              "type": "keyword",
+              "index": true,
+              "norms": false
+            }
+          }
+        }
+      },
+      "index_patterns": [
+        "dbmotion.*"
+      ]
+    }
+---
+# Source: elasticsearch/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -263,6 +341,10 @@ metadata:
   namespace: dts
 spec:
   template:
+    metadata:
+      labels:
+        qfusion/useIstio: "true"
+        mgrds/run: "master"
     spec:
       nodeSelector: 
             qfusion/master: "true"
@@ -283,6 +365,14 @@ spec:
               value: elasticsearch-discovery
             - name: MAX_RESULT_WINDOW
               value: "50000"
+          volumeMounts:
+            - name: index-templates
+              mountPath: /log-templates/
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: elasticsearch-index-templates
+          name: index-templates
       restartPolicy: OnFailure
   backoffLimit: 5
 ---
