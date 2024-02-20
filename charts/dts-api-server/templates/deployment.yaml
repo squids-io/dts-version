@@ -111,7 +111,7 @@ spec:
             - name: TMOUT
               value: "{{ .Values.tmout }}"
             - name: KFK_LOG_DIR
-              value: "/kafka:/dbmotion/log/kf"
+              value: "/kafka:/dbmotion/log"
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
