@@ -26,7 +26,7 @@ sed "0,/  password: XXXXXX/s//${password}/" ./yaml/secret.yaml > ./yaml/secret.b
 mv ./yaml/secret.back.yaml  ./yaml/secret.yaml
 
 caBundle=`(kubectl -nqfusion get mutatingwebhookconfigurations qfusion-vmi-injector -oyaml | grep -m 1 caBundle:)`
-sed  "s/  caBundle: XXXXXX/${caBundle}/g" ./yaml/mutatingWebhookConfiguration.yaml > ./yaml/mutatingWebhookConfiguration.back.yaml
+sed  "s/caBundle: XXXXXX/${caBundle}/g" ./yaml/mutatingWebhookConfiguration.yaml > ./yaml/mutatingWebhookConfiguration.back.yaml
 mv ./yaml/mutatingWebhookConfiguration.back.yaml  ./yaml/mutatingWebhookConfiguration.yaml
 
 #update resource
