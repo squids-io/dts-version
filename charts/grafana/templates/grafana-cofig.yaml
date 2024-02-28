@@ -203,7 +203,7 @@ data:
       admin_password =
 
       # used for signing
-      ;secret_key = ${GRAFANA_SECRET_KEY}
+      secret_key = SW2YcwTIb9zpOOhoPsMm
 
       # disable gravatar profile images
       disable_gravatar = true
