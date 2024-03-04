@@ -196,7 +196,7 @@ spec:
             - name: TMOUT
               value: "300"
             - name: KFK_LOG_DIR
-              value: "/kafka:/dbmotion/log/kf"
+              value: "/kafka:/dbmotion/log"
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime

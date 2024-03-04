@@ -81,7 +81,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -107,11 +107,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
           "expr": "dts_binlog_delay{event_type=\"write\", task_id=\"$task_id\"}",
-          "legendFormat": "写目标端",
+          "legendFormat": "write target db",
           "range": true,
           "refId": "A"
         }
@@ -173,7 +174,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -199,11 +200,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
           "expr": "dts_binlog_delay{event_type=\"read\", task_id=\"$task_id\"}",
-          "legendFormat": "读取源端",
+          "legendFormat": "read source db",
           "range": true,
           "refId": "A"
         }
@@ -216,7 +218,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "每秒钟同步的行数",
+      "description": "rows per second",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -291,22 +293,24 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rate(dts_binlog_row_count{event_type=\"read\", task_id=\"$task_id\"}[30s])",
-          "legendFormat": "读取源端",
+          "legendFormat": "read source db",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rate(dts_binlog_row_count{event_type=\"write\", task_id=\"$task_id\"}[30s])",
           "hide": false,
-          "legendFormat": "写目标端",
+          "legendFormat": "write target db",
           "range": true,
           "refId": "B"
         }
@@ -319,7 +323,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "每秒钟同步的数据量",
+      "description": "bytes per second",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -395,22 +399,24 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rate(dts_binlog_bytes{event_type=\"read\", task_id=\"$task_id\"}[30s])",
-          "legendFormat": "读取源端",
+          "legendFormat": "read source db",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rate(dts_binlog_bytes{event_type=\"write\", task_id=\"$task_id\"}[30s])",
           "hide": false,
-          "legendFormat": "写目标端",
+          "legendFormat": "write target db",
           "range": true,
           "refId": "B"
         }
@@ -423,7 +429,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "每秒钟处理的事务数",
+      "description": "transactions per second",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -498,22 +504,24 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rate(dts_binlog_transaction_count{event_type=\"read\", task_id=\"$task_id\"}[1m])",
-          "legendFormat": "读取源端",
+          "legendFormat": "read source db",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rate(dts_binlog_transaction_count{event_type=\"write\", task_id=\"$task_id\"}[1m])",
           "hide": false,
-          "legendFormat": "写目标端",
+          "legendFormat": "write target db",
           "range": true,
           "refId": "B"
         }
@@ -526,7 +534,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "数据库响应时间",
+      "description": "database response time",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -602,22 +610,24 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
           "expr": "dts_binlog_sql_response_time{event_type=\"read\", task_id=\"$task_id\"}",
-          "legendFormat": "源端",
+          "legendFormat": "source db",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
           "expr": "dts_binlog_sql_response_time{event_type=\"write\", task_id=\"$task_id\"}",
           "hide": false,
-          "legendFormat": "目标端",
+          "legendFormat": "target db",
           "range": true,
           "refId": "B"
         }
@@ -630,7 +640,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "缓存的行数",
+      "description": "rows in queue",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -705,11 +715,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "max(dts_binlog_row_count{event_type=\"read\", task_id=\"$task_id\"}) - min(dts_binlog_row_count{event_type=\"write\", task_id=\"$task_id\"}) - min(dts_binlog_row_count{event_type=\"skip\", task_id=\"$task_id\"})",
-          "legendFormat": "缓存的行数",
+          "legendFormat": "rows in queue",
           "range": true,
           "refId": "A"
         }
@@ -722,7 +733,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "网络延时",
+      "description": "network delay",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -798,22 +809,24 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "dts_network_delay{end_type=\"source\", task_id=\"$task_id\"}",
-          "legendFormat": "源端",
+          "legendFormat": "source db",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "dts_network_delay{end_type=\"target\", task_id=\"$task_id\"}",
           "hide": false,
-          "legendFormat": "目标端",
+          "legendFormat": "target db",
           "range": true,
           "refId": "B"
         }
@@ -831,8 +844,8 @@
       {
         "current": {
           "selected": false,
-          "text": "42933b995114",
-          "value": "42933b995114"
+          "text": "39035babac4b",
+          "value": "39035babac4b"
         },
         "datasource": {
           "type": "prometheus",

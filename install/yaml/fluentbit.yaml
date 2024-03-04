@@ -307,16 +307,8 @@ spec:
           volumeMounts:
             - name: dbmotionlog
               mountPath: /opt/qfusion/localpv
-            - name: varlog
-              mountPath: /var/log
-            - name: varlibpodcontainers
-              mountPath: /var/lib/kubelet/pods
-              readOnly: true
             - name: fluent-bit-config
               mountPath: /fluent-bit/etc/
-            - name: containers
-              mountPath: /var/lib/docker/containers
-              readOnly: true
             - name: limit
               mountPath: /etc/security/limits.conf
               subPath: limits
@@ -326,21 +318,12 @@ spec:
               name: storage
       terminationGracePeriodSeconds: 10
       volumes:
-        - name: varlog
-          hostPath:
-            path: /var/log
         - name: storage
           hostPath:
             path: /opt/dts/flb-storage
         - name: dbmotionlog
           hostPath:
             path: /opt/qfusion/localpv
-        - name: varlibpodcontainers
-          hostPath:
-            path: /var/lib/kubelet/pods
-        - name: containers
-          hostPath:
-              path: /var/lib/docker/containers
         - name: fluent-bit-config
           configMap:
             name: fluentbit
