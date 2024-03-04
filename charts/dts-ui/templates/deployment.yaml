@@ -31,13 +31,20 @@ spec:
           env:
             - name: TMOUT
               value: "{{ .Values.tmout }}"
+            - name: PODIP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: LISTEN_ADDR
+              value: $(PODIP):8080
           ports:
             - containerPort: 8080
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
             - name: web-nginx-conf
-              mountPath: /etc/nginx/nginx.conf
+              mountPath: /etc/nginx/nginx.conf.base
               subPath: nginx.conf
       restartPolicy: Always
       terminationGracePeriodSeconds: 0
