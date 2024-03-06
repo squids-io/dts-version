@@ -45,9 +45,9 @@ data:
             default upgrade;
             '' close;
         }
-
+        ## ... LISTEN_ADDR 用于替换全零监听问题，通过set命令替换，对应的配置从环境变量中获取，如果环境变量中不存在则不执行对应的替换逻辑...
         server {
-            listen 8080;
+            listen LISTEN_ADDR;
             ssi off;
             # server_name localhost;
 
@@ -207,13 +207,20 @@ spec:
           env:
             - name: TMOUT
               value: "300"
+            - name: PODIP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: LISTEN_ADDR
+              value: $(PODIP):8080
           ports:
             - containerPort: 8080
           volumeMounts:
             - name: localtime
               mountPath: /etc/localtime
             - name: web-nginx-conf
-              mountPath: /etc/nginx/nginx.conf
+              mountPath: /etc/nginx/nginx.conf.base
               subPath: nginx.conf
       restartPolicy: Always
       terminationGracePeriodSeconds: 0

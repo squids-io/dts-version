@@ -1,4 +1,0 @@
-- name: DBMotion
-  aliasName: DBMotion
-  supportedTargetTypes:
-    - DBMotion

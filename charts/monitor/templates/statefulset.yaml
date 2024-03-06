@@ -42,64 +42,6 @@ spec:
             - name: dts-data
               mountPath: /dts-data
       containers:
-        - name: phoenix
-          image: {{.Values.phoenix.image.registry}}/{{.Values.phoenix.image.repository}}/{{.Values.phoenix.image.name}}:{{ .Values.phoenix.image.tag }}
-          imagePullPolicy: {{ .Values.phoenix.image.pullPolicy }}
-          securityContext:
-            runAsGroup: 1000
-            runAsNonRoot: true
-            runAsUser: 1000
-          command:
-            - "/phoenix"
-            - "--database-address={{ .Values.database.address }}"
-            - "--database-port={{ .Values.database.port }}"
-            - "--database-username=$(DATABASE_USERNAME)"
-            - "--database-password=$(DATABASE_PASSWORD)"
-            - "--database-database={{ .Values.database.name }}"
-            - "--data-dir=/dts-conf"
-            - "--rule-config=/rules.yml"
-            - "--prom-url=http://monitor:9090"
-            - "--alert-url=http://alertmanager:9093"
-            - "--tmpl-dir=/etc/alert/tmpl"
-            - "--alerting-target-type-file-path=/etc/phoenix/conf/alerting-target-type.yml"
-            - "--alerting-type-file-path=/etc/phoenix/conf/alerting-type.yml"
-            - "--alerting-model-file-paths=/etc/phoenix/conf/alerting-model.yml"
-            - "--default-templates-file-path=/etc/phoenix/conf/alerting-templates.yml"
-            - "--notify-base-url=http://phoenix:9091"
-            - "--http-receivers-discovery-endpoint={{.Values.phoenix.args.endpoint.receiver}}"
-            - "--http-targets-discovery-endpoints={{.Values.phoenix.args.endpoint.target}}"
-            - "--alert-hook={{.Values.phoenix.args.alert.hook}}"
-            - "--http-discovery-interval=60"
-            - "--enable-multi-tenant=false"
-            - "--tailor-port=15100"
-          env:
-            - name: DATABASE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  key: username
-                  name: cmdb0-root-suffix
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  key: password
-                  name: cmdb0-root-suffix
-          ports:
-            - containerPort: 9091
-              protocol: TCP
-              name: phoenix
-          volumeMounts:
-            - name: phoenix-conf
-              mountPath: /etc/phoenix/conf
-            - name: tmpl-volume
-              mountPath: /etc/alert/tmpl
-            - name: monitor-conf
-              mountPath: /etc/phoenix/monitor
-            - name: shared-conf
-              mountPath: /dts-conf
-            - name: timezone
-              mountPath: /etc/timezone
-            - name: localtime
-              mountPath: /etc/localtime
         - name: prometheus
           image: {{.Values.prometheus.image.registry}}/{{.Values.prometheus.image.repository}}/{{.Values.prometheus.image.name}}:{{ .Values.prometheus.image.tag }}
           imagePullPolicy: {{ .Values.prometheus.image.pullPolicy }}
@@ -147,41 +89,11 @@ spec:
               mountPath: /etc/timezone
             - name: localtime
               mountPath: /etc/localtime
-        - name: alertmanager
-          image: {{.Values.alertmanager.image.registry}}/{{.Values.alertmanager.image.repository}}/{{.Values.alertmanager.image.name}}:{{ .Values.alertmanager.image.tag }}
-          imagePullPolicy: {{ .Values.alertmanager.image.pullPolicy }}
-          args:
-            - --storage.path=/alertmanager/data
-            - --cluster.advertise-address=0.0.0.0:9093
-            - --config.file=/etc/alertmanager/alertmanager.yml
-          ports:
-            - containerPort: 9093
-              protocol: TCP
-              name: alertmanager
-          volumeMounts:
-            - name: alertmanager-tmpl
-              mountPath: /etc/alert/tmpl
-            - name: monitor-conf
-              mountPath: /etc/alertmanager
-            - name: dts-data
-              mountPath: /alertmanager/data
-            - name: shared-conf
-              mountPath: /dts-conf
-            - name: timezone
-              mountPath: /etc/timezone
-            - name: localtime
-              mountPath: /etc/localtime
       volumes:
-        - name: phoenix-conf
-          configMap:
-            name: phoenix-conf
         - name: monitor-conf
           configMap:
             defaultMode: 432
             name: monitor-conf
-        - name: alertmanager-tmpl
-          configMap:
-            name: alertmanager-tmpl
         - name: shared-conf
           emptyDir: { }
         - name: tmpl-volume

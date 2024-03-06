@@ -6,9 +6,7 @@ replicaCount: 1
 
 nodeExporter:
   nodePort: true
-  phoenix: 32003
   prometheus: 32005
-  alertmanager: 32006
 
 conf:
   image:
@@ -23,20 +21,6 @@ database:
   secret: qfusion-cmdb0-root-suffix
   name: dts_phoenix
 
-phoenix:
-  image:
-    registry: k8smaster.qfusion.irds
-    repository: irds
-    name: phoenix
-    pullPolicy: Always
-    tag: 1.4.7-dbmotion-hcs-oem
-  args:
-    endpoint:
-      receiver: http://webserver-cluster.qfusion/api/v1/phoenix/alerting_receivers
-      target: http://dts-api-server.dts:3000/api/motion/v2/alert/phoenix/targets
-    alert:
-      hook: http://dts-api-server.dts:3000/api/motion/v2/alert/notice
-
 prometheus:
   image:
     registry: k8smaster.qfusion.irds
@@ -49,14 +33,6 @@ prometheus:
     minBlockDuration: 2h
     maxBlockDuration: 2h
   pvcSize: 200Gi
-
-alertmanager:
-  image:
-    registry: k8smaster.qfusion.irds
-    repository: irds
-    name: alertmanager
-    pullPolicy: IfNotPresent
-    tag: v0.26.0
 
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -83,5 +59,5 @@ affinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       - labelSelector:
           matchLabels:
-            app.kubernetes.io/name: phoenix
+            app.kubernetes.io/name: prometheus
         topologyKey: kubernetes.io/hostname
