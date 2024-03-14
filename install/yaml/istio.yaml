@@ -164,7 +164,7 @@ spec:
             - --captchaCheck=true
             - --homeUrl=/dts
             - --logtostderr
-            - --casServer=https://auth.songshanghu-x86-2.com/authui
+            - --casServer=
             - --skipVerify=true
             - --hcsToken=true
             - --paramWhiteList=homeUrl,state,service,region,home,origin
@@ -202,8 +202,8 @@ spec:
           readinessProbe:
             failureThreshold: 3
             httpGet:
-              path: /auth/v1/reload
-              port: 9095
+              path: /auth/v1/ready
+              port: 9096
               scheme: HTTP
             periodSeconds: 15
             successThreshold: 1

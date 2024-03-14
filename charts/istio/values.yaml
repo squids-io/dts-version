@@ -24,7 +24,7 @@ auth:
   casbinRules:
     includeAbout: true
     includeKibana: true
-  casServer: "https://auth.songshanghu-x86-2.com/authui"
+  casServer: ""
   skipVerify: true
 
 ingress:

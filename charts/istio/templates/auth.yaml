@@ -85,8 +85,8 @@ spec:
           readinessProbe:
             failureThreshold: 3
             httpGet:
-              path: /auth/v1/reload
-              port: 9095
+              path: /auth/v1/ready
+              port: 9096
               scheme: HTTP
             periodSeconds: 15
             successThreshold: 1

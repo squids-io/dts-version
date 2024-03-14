@@ -1,4 +1,6 @@
 #update 数据库表 casbin_rule
+mysql_root_password=`kubectl -nqfusion get secret qfusion-cmdb0-root-suffix -o yaml |grep password |awk '{print $2}'|base64 -d`
+pwd=`$1 --enc=$mysql_root_password | awk -F '[][]' '{print $2}' | sed '/^$/d'`
 for name in qfusion-cmdb00-0  qfusion-cmdb01-0
 do
   isMaster=`(kubectl -nqfusion  describe pod $name | grep IsMaster)`
@@ -11,11 +13,12 @@ do
       sleep 20
       pod_status=$(kubectl get pods -n qfusion  -o=jsonpath="{.items[?(@.metadata.name == '$name')].status.phase}")
     done
-   `(kubectl -nqfusion exec -it $name bash -cmysql  -- mysql -uroot -pletsg0 < ./casbin_rule.sql)`
+   `(kubectl -nqfusion exec -it $name bash -cmysql  -- mysql -uroot -p$pwd < ./casbin_rule.sql)`
    fi
 done
 
 #update secret username
+cp ./yaml/secret.yaml ./yaml/secret-backup.yaml
 username=`(kubectl -nqfusion get secret qfusion-cmdb0-root-suffix -oyaml | grep username)`
 sed "0,/  username: XXXXXX/s//${username}/" ./yaml/secret.yaml > ./yaml/secret.back.yaml
 mv ./yaml/secret.back.yaml  ./yaml/secret.yaml
@@ -25,9 +28,9 @@ password=`(kubectl -nqfusion get secret qfusion-cmdb0-root-suffix -oyaml | grep 
 sed "0,/  password: XXXXXX/s//${password}/" ./yaml/secret.yaml > ./yaml/secret.back.yaml
 mv ./yaml/secret.back.yaml  ./yaml/secret.yaml
 
+cp ./yaml/mutatingWebhookConfiguration.yaml ./yaml/mutatingWebhookConfiguration-backup.yaml
 caBundle=`(kubectl -nqfusion get mutatingwebhookconfigurations qfusion-vmi-injector -oyaml | grep -m 1 caBundle:)`
-sed  "s/caBundle: XXXXXX/${caBundle}/g" ./yaml/mutatingWebhookConfiguration.yaml > ./yaml/mutatingWebhookConfiguration.back.yaml
-mv ./yaml/mutatingWebhookConfiguration.back.yaml  ./yaml/mutatingWebhookConfiguration.yaml
+sed -i "s/    caBundle: XXXXXX/$caBundle/g" ./yaml/mutatingWebhookConfiguration.yaml
 
 #update resource
 for file in  namespace.yaml secret.yaml cert.yaml mutatingWebhookConfiguration.yaml dts-api-server.yaml  dts-ui.yaml  elasticsearch.yaml  fluentbit.yaml  grafana.yaml  istio.yaml  monitor.yaml
